@@ -18,3 +18,6 @@ dist/
 Thumbs.db
 .vscode/
 .idea/
+
+# 資料集め（他人の作・ダウンロード物。読むだけ、リポには含めない）
+refs/
