@@ -13,3 +13,7 @@
 ## 状態
 
 作り始め。Build mainly with Claude Code: 茶々入れ2026
+
+## ライセンス
+
+MIT
