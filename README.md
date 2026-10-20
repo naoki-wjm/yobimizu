@@ -14,6 +14,11 @@
 
 作り始め。Build mainly with Claude Code: 茶々入れ2026
 
+作っている途中の経過（なぜその問いを立てたか・何に引っ掛かったか・なぜ方針を変えたか）は、リポジトリの外の雑記に残しています。
+
+- [連載の一覧（新しい順）](https://garasudama.yumegatari.com/%E3%82%BF%E3%82%B0/BmwC%E8%8C%B6%E3%80%85%E5%85%A5%E3%82%8C2026.html)
+- [初回から読むなら 2026-1](https://garasudama.yumegatari.com/%E9%9B%91%E8%A8%98/2026%E5%B9%B410%E6%9C%88/2026-10-15-01%EF%BC%88Build%20mainly%20with%20Claude%20Code%EF%BC%9A%20%E8%8C%B6%E3%80%85%E5%85%A5%E3%82%8C%202026-1%EF%BC%89.html)
+
 ## ライセンス
 
 MIT
