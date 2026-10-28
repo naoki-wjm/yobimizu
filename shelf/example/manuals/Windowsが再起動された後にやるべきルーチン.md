@@ -2,7 +2,7 @@
 title: Windowsが再起動された後にやるべきルーチン
 created: 2026-10-20
 updated: 2026-10-20
-summary: 持ち主宅の Windows Windows PC が再起動された後に、本人が順にやること。五段と、各段で見る物と、飛ばすと困る所。
+summary: 持ち主宅の Windows PC が再起動された後に、本人が順にやること。五段と、各段で見る物と、飛ばすと困る所。
 aliases: [再起動された後にやるべきルーチン, 再起動後のルーチン, 立ち上げ直し, 再ログイン後, 鯨, ドッカーが詰まっている, Docker が起動しない, オブシディアンジットがオフ, 落ち着くのを待つ, タスクトレイ]
 questions:
   - 再起動した後に何をすればいいか
@@ -16,7 +16,7 @@ questions:
   - bot をいつ落としていつ上げ直すか
   - Docker を立て直すのに何が要るか
 readers: [再起動時に自信がなくなった持ち主本人]
-series: WindowsWindows PCシリーズ
+series: Windows PCシリーズ
 related: []
 ---
 
@@ -131,7 +131,7 @@ related: []
 
 ## 9. 似ているけど別のもの
 
-- 一段大きいまとまりは「WindowsWindows PCシリーズ」です（設定欄の series）。
+- 一段大きいまとまりは「Windows PCシリーズ」です（設定欄の series）。
 - 似ているけど別の場面として「WindowsのIMEがバグったら」があります（未作成）。
 - 再起動の種類（Windows Update の強制・自分で再起動・停電）で手順が変わるかは聞いていません。〔空欄〕
 
