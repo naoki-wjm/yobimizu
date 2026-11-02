@@ -8,20 +8,20 @@
 
 - **書く側**: 聞き取りの台本。どの LLM に貼っても動く 1 枚の文章（`yobimizu-kumiage/script.md`、第三稿）と、それを包むだけの Claude 向けスキル（同じフォルダの `SKILL.md`。フォルダごとスキル置き場にコピーすれば入る）
 - **置き場の型**: できたマニュアルを置くフォルダと、ファイル冒頭の設定欄・本文・記録の決まり（`shelf/format.md`）。見本は `shelf/example/`（本文三本と、その元になった聞き取りの記録。実際の聞き取りから固有の名前を言い換えた合成版）
-- **読む側**: 置き場から引く検索窓（サーバー不要の 1 枚 HTML）。設計図は `reader/spec.md`、画面の絵は `reader/sketch.md`。コードは 2026-11-02 から
+- **読む側**: 置き場から引く検索窓（サーバー不要の 1 枚 HTML）。作るコードは `reader/build_reader.py`（Python の標準ライブラリだけ）と雛形の `reader/template.html`。設計図は `reader/spec.md`、画面の絵は `reader/sketch.md`
 
 ## 使い方
 
 1. **聞き取る**: `yobimizu-kumiage/script.md` を LLM に貼り（Claude Code ならフォルダごとスキルとして入れ）、聞かれた問いに一つずつ答える。弾（回）ごとに聞き取りの記録が返ってくる
 2. **まとめる**: 記録と `shelf/format.md` を LLM に渡して、マニュアル本文を書いてもらう。聞き取りをした LLM と同じでなくてよい
 3. **置く**: 本文を `manuals/`、記録を `records/<題名>/` に置く。形は `shelf/example/` と同じ
-4. **引く**: 置き場を指して索引を作り、1 枚 HTML で検索する（読む側ができてから）
+4. **引く**: 置き場を指して `python reader/build_reader.py <置き場のパス>` を実行し、できた `<置き場>/reader.html` をブラウザで開いて検索する。サーバーもネットも要らない。本文を直したら作り直す
 
-先に出来上がりを見たい人は `shelf/example/manuals/` の三本へ。読み手が LLM の手順、読み手が本人の手順、心得寄りの物、の三種類です。
+先に出来上がりを見たい人は `python reader/build_reader.py shelf/example` で見本の検索窓を作って開くか、`shelf/example/manuals/` の三本へ。読み手が LLM の手順、読み手が本人の手順、心得寄りの物、の三種類です。
 
 ## 状態
 
-作り始め。書く側と置き場の型は文章として一通り揃い、読む側はこれから。Build mainly with Claude Code: 茶々入れ2026
+作っている途中。書く側と置き場の型は文章として一通り揃い、読む側は検索・開く・反応の一行まで動く。Build mainly with Claude Code: 茶々入れ2026
 
 作っている途中の経過（なぜその問いを立てたか・何に引っ掛かったか・なぜ方針を変えたか）は、リポジトリの外の雑記に残しています。
 

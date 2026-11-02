@@ -12,6 +12,8 @@ config.local.*
 out/
 dist/
 *.log
+reader.html
+__pycache__/
 
 # OS / エディタ
 .DS_Store

@@ -1,0 +1,1017 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<!-- サーバーなし・外部読み込みなし（spec 0 節）を、ブラウザの側でも縛る -->
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'">
+<meta name="referrer" content="no-referrer">
+<title>呼び水 置き場の検索</title>
+<style>
+:root {
+  color-scheme: light dark;
+  --ground: #e6e8e1;      /* 井戸の縁の石 */
+  --water-top: #cfe4e5;   /* 水面のすぐ下 */
+  --water-deep: #b6d4d8;  /* 深い所 */
+  --sheet: #fbfcf9;       /* 水に浮かべた紙 */
+  --ink: #12302f;
+  --ink-soft: #35504e;
+  --line: #1e6a72;        /* 水面の線とリンク */
+  --pencil: #80510c;      /* 〔仮〕 */
+  --blank: #a03a28;       /* 〔空欄〕 */
+  --mark: rgba(30, 106, 114, .2);
+  --hairline: rgba(18, 48, 47, .2);
+  --mincho: "Yu Mincho", "YuMincho", "Hiragino Mincho ProN", "Noto Serif CJK JP", serif;
+  --gothic: "Yu Gothic UI", "Yu Gothic", "YuGothic", "Hiragino Sans", "Noto Sans CJK JP", Meiryo, sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --ground: #1c2421;
+    --water-top: #102d33;
+    --water-deep: #0a2027;
+    --sheet: #17282c;
+    --ink: #dfebe8;
+    --ink-soft: #a9c0bd;
+    --line: #84cdd5;
+    --pencil: #e4b866;
+    --blank: #efa391;
+    --mark: rgba(132, 205, 213, .25);
+    --hairline: rgba(223, 235, 232, .22);
+  }
+}
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; background: var(--water-deep); }
+body {
+  margin: 0;
+  min-height: 100vh;
+  color: var(--ink);
+  font: 16px/1.75 var(--gothic);
+  background: linear-gradient(var(--water-top), var(--water-deep)) fixed;
+}
+a { color: var(--line); text-underline-offset: .18em; }
+a:focus-visible, button:focus-visible, input:focus-visible, summary:focus-visible, textarea:focus-visible, #reader:focus-visible {
+  outline: 3px solid var(--line);
+  outline-offset: 2px;
+}
+mark { background: var(--mark); color: inherit; border-radius: 2px; }
+.visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+
+/* 水面より上。検索窓は水面の線にまたがる */
+.rim { background: var(--ground); border-bottom: 2px solid var(--line); padding: 1.25rem clamp(1rem, 4vw, 3rem) 0; }
+.rim-inner, .pool { max-width: 84rem; margin: 0 auto; }
+.rim-top { display: flex; align-items: baseline; gap: 1rem; flex-wrap: wrap; }
+h1 { margin: 0; font: 600 clamp(2rem, 5vw, 3.1rem)/1.15 var(--mincho); letter-spacing: .08em; }
+.rim-sub { color: var(--ink-soft); }
+.built { margin-left: auto; color: var(--ink-soft); font-size: .85rem; }
+form { position: relative; display: flex; gap: .5rem; max-width: 46rem; margin: 1rem 0 -1.45rem; }
+#q {
+  flex: 1; min-width: 0; height: 2.9rem; padding: 0 1rem;
+  border: 2px solid var(--line); border-radius: 3px;
+  background: var(--sheet); color: var(--ink); font: inherit; font-size: 1.05rem;
+}
+#q::placeholder { color: var(--ink-soft); }
+form button {
+  height: 2.9rem; padding: 0 1.4rem; border: 2px solid var(--line); border-radius: 3px;
+  background: var(--line); color: var(--sheet); font: 600 1rem var(--gothic); letter-spacing: .15em; cursor: pointer;
+}
+/* 引いた時に一度だけ広がる波紋 */
+.ripple { position: absolute; left: 50%; top: 100%; width: 40%; height: .5rem; margin: -.25rem 0 0 -20%; border: 1px solid var(--line); border-radius: 50%; opacity: 0; pointer-events: none; }
+.ripple.go { animation: ripple .9s ease-out; }
+@keyframes ripple { 0% { transform: scale(.3); opacity: .8; } 100% { transform: scale(2.4, 3.4); opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .ripple.go { animation: none; } .step-flash { animation: none !important; } }
+
+/* 水面より下 */
+.pool { padding: 2.3rem clamp(1rem, 4vw, 3rem) 4rem; display: grid; grid-template-columns: minmax(0, 46rem); gap: 2rem; align-items: start; }
+.has-open .pool { grid-template-columns: minmax(20rem, 29rem) minmax(0, 1fr); }
+.filters { display: grid; gap: .3rem; margin-bottom: 1.1rem; font-size: .88rem; }
+.filter-row { display: flex; flex-wrap: wrap; gap: .3rem .35rem; align-items: center; }
+.filter-name { color: var(--ink-soft); margin-right: .25rem; }
+.chip {
+  padding: .05rem .6rem; border: 1px solid var(--hairline); border-radius: 1rem;
+  background: transparent; color: var(--ink); font: inherit; cursor: pointer; text-align: left;
+}
+.chip[aria-pressed="true"] { background: var(--line); border-color: var(--line); color: var(--sheet); }
+
+#status { margin: 0 0 .9rem; color: var(--ink-soft); font-size: .92rem; }
+
+/* 結果の一件。箱に詰めず、水に浮かぶ行として並べる */
+.hit { padding: .7rem 0 .8rem .9rem; border-left: 3px solid transparent; }
+.hit + .hit { margin-top: .15rem; }
+.hit[aria-current="true"] { border-left-color: var(--line); background: var(--mark); }
+.hit-title { margin: 0; font: 600 1.06rem/1.5 var(--mincho); }
+.hit-title a { color: var(--ink); text-decoration: none; display: block; }
+.hit-title a:hover { text-decoration: underline; text-decoration-color: var(--line); }
+.hit-file { color: var(--ink-soft); font-weight: 400; font-size: .92em; }
+.same-file .hit-file { opacity: .62; }
+.door { display: inline-block; margin-right: .4rem; padding: 0 .4rem; border: 1px solid var(--line); color: var(--line); font: 600 .75rem/1.5 var(--gothic); border-radius: 2px; vertical-align: .1em; }
+.hit-summary { margin: .1rem 0 0; color: var(--ink-soft); font-size: .88rem; line-height: 1.6; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.tags { display: flex; flex-wrap: wrap; gap: .1rem .7rem; margin: .15rem 0 0; color: var(--ink-soft); font-size: .8rem; }
+.tag-kari { color: var(--pencil); }
+.tag-blank { color: var(--blank); }
+.where { margin: .15rem 0 0; font-size: .86rem; }
+.absent { margin: .1rem 0 0; color: var(--ink-soft); font-size: .8rem; }
+.children { list-style: none; margin: .4rem 0 0; padding: 0 0 0 .8rem; border-left: 1px solid var(--line); font-size: .88rem; }
+.children li { padding: .2rem 0; }
+.children .where { display: block; margin: 0; color: var(--ink-soft); font-size: .8rem; }
+.more summary { cursor: pointer; color: var(--line); font-size: .86rem; padding: .3rem 0; }
+.band { margin: 1.5rem 0 .3rem; padding-top: .9rem; border-top: 1px solid var(--hairline); font: 600 .95rem var(--mincho); }
+
+/* 一番上の案内 */
+.landing h2 { font: 600 1.1rem var(--mincho); margin: 1.6rem 0 .4rem; }
+.landing ul { list-style: none; margin: 0; padding: 0; }
+.landing li { padding: .3rem 0; }
+.shelf-stat { margin: 0; }
+.shelf-title { font: 600 1.02rem/1.5 var(--mincho); }
+.shelf-meta { display: block; color: var(--ink-soft); font-size: .84rem; }
+
+/* 開いた一節: 水に浮かべた紙一枚 */
+#reader { background: var(--sheet); padding: 1.6rem clamp(1.1rem, 3vw, 2.4rem) 1.8rem; border-radius: 2px; box-shadow: 0 0 0 1px var(--hairline), .35rem .45rem 0 var(--water-deep); }
+@media (min-width: 901px) { #reader { position: sticky; top: 1rem; max-height: calc(100vh - 2rem); overflow: auto; } }
+.close-row { display: flex; justify-content: space-between; gap: 1rem; font-size: .85rem; margin-bottom: .6rem; }
+.doc-title { margin: 0; color: var(--ink-soft); font: 400 .95rem/1.5 var(--mincho); }
+.doc-heading { margin: .1rem 0 .9rem; font: 600 clamp(1.3rem, 2.4vw, 1.65rem)/1.45 var(--mincho); }
+.doc-heading:focus { outline: none; }
+.toc summary { cursor: pointer; color: var(--line); font-size: .85rem; }
+.toc ol { list-style: none; margin: .3rem 0 .7rem; padding: 0; font-size: .86rem; line-height: 1.8; }
+.toc [aria-current="true"] { font-weight: 700; color: var(--ink); text-decoration: none; }
+.doc { max-width: 42rem; overflow-wrap: anywhere; }
+.doc h3 { font: 600 1.14rem/1.5 var(--mincho); margin: 1.5rem 0 .4rem; }
+.doc h4 { font-size: 1rem; margin: 1.2rem 0 .3rem; }
+.doc p { margin: .6rem 0; }
+.doc ul, .doc ol { margin: .4rem 0; padding-left: 1.35rem; }
+.doc li { margin: .28rem 0; }
+.doc li > ul, .doc li > ol { margin: .2rem 0; }
+.doc blockquote { margin: .7rem 0; padding: .1rem 0 .1rem .9rem; border-left: 3px solid var(--hairline); color: var(--ink-soft); }
+.doc pre { padding: .7rem .9rem; overflow: auto; background: var(--mark); font-size: .86rem; line-height: 1.5; }
+.doc code { font-family: Consolas, "SFMono-Regular", Menlo, monospace; font-size: .9em; }
+.doc hr { border: 0; border-top: 1px solid var(--hairline); margin: 1.2rem 0; }
+.table-wrap { overflow-x: auto; margin: .7rem 0; }
+.doc table { border-collapse: collapse; font-size: .9rem; }
+.doc th, .doc td { border: 1px solid var(--hairline); padding: .3rem .6rem; text-align: left; vertical-align: top; }
+.step { display: inline-block; margin-right: .35rem; color: var(--line); font-weight: 700; font-variant-numeric: tabular-nums; scroll-margin-top: 1rem; }
+.step-flash { animation: flash 1.6s ease-out; border-radius: 2px; }
+@keyframes flash { 0%, 40% { background: var(--mark); box-shadow: 0 0 0 .25rem var(--mark); } 100% { background: transparent; box-shadow: 0 0 0 .25rem transparent; } }
+.fuda { font-weight: 700; }
+.fuda-注意 { color: var(--blank); }
+.fuda-やらない { color: var(--blank); }
+.fuda-済んだ合図 { color: var(--line); }
+/* 仮は鉛筆の波線、空欄は本当に空いた枠 */
+.kari { color: var(--pencil); text-decoration: underline wavy .08em; text-underline-offset: .22em; }
+.blank { color: var(--blank); padding: .05em .4em; border: 1.5px dashed var(--blank); border-radius: 2px; }
+.source { color: var(--ink-soft); font-size: .92em; }
+.missing { color: var(--ink-soft); }
+
+.doc-meta { margin: 1.4rem 0 0; padding-top: .8rem; border-top: 1px solid var(--hairline); font-size: .86rem; display: grid; gap: .2rem; grid-template-columns: max-content minmax(0, 1fr); column-gap: .9rem; }
+.doc-meta dt { color: var(--ink-soft); }
+.doc-meta dd { margin: 0; }
+.react { margin-top: 1.1rem; }
+.react-q { margin: 0 0 .4rem; font-size: .9rem; }
+.react-buttons { display: flex; flex-wrap: wrap; gap: .4rem; }
+.react-buttons button, .copy {
+  padding: .25rem .8rem; border: 1px solid var(--line); border-radius: 3px; background: transparent;
+  color: var(--line); font: inherit; font-size: .9rem; cursor: pointer;
+}
+.react-buttons button[aria-pressed="true"] { background: var(--line); color: var(--sheet); }
+.react-line {
+  display: block; width: 100%; margin-top: .6rem; padding: .5rem .7rem; resize: none;
+  border: 1px solid var(--hairline); border-radius: 2px; background: transparent; color: var(--ink);
+  font: .86rem/1.5 Consolas, "Yu Gothic UI", monospace;
+}
+.react-note { margin: .3rem 0 0; font-size: .84rem; color: var(--ink-soft); }
+
+@media (max-width: 900px) {
+  .has-open .pool { grid-template-columns: minmax(0, 1fr); }
+  .has-open #results { display: none; }
+  .built { margin-left: 0; }
+}
+</style>
+</head>
+<body>
+<header class="rim">
+  <div class="rim-inner">
+    <div class="rim-top">
+      <h1>呼び水</h1>
+      <span class="rim-sub">置き場の検索</span>
+      <span class="built" id="built"></span>
+    </div>
+    <form id="search" role="search">
+      <input id="q" type="search" placeholder="何を調べますか" aria-label="検索する言葉。空白で区切ると、どれかを含む節が出ます" autocomplete="off" autofocus>
+      <button type="submit">引く</button>
+      <span class="ripple" id="ripple" aria-hidden="true"></span>
+    </form>
+  </div>
+</header>
+<div class="visually-hidden" id="live" role="status"></div>
+<div class="pool" id="pool">
+  <main id="results"></main>
+  <article id="reader" hidden tabindex="-1"></article>
+</div>
+<noscript><p style="padding:2rem">この検索窓は JavaScript で動きます。ブラウザの設定で有効にしてください。</p></noscript>
+
+<script type="application/json" id="index">/*__INDEX__*/null</script>
+<script>
+"use strict";
+(function () {
+  /* ---- 検索の芯（画面に触らない） ---- */
+
+  // 重さの数値は仮置き（spec 9 節）。使いながらここだけ動かす
+  const WEIGHT = { targeted: 100, file: 80, heading: 40, summary: 20, body: 5 };
+  const BODY_LIMIT = 5;      // 本文だけの当たりを最初に見せる数（spec 3 節）
+  const CHILD_LIMIT = 5;     // 入口にぶら下げる節を最初に見せる数
+
+  // 長さを変えずに揃える（当たった位置を元の文字列にそのまま使うため）。かなは揃えない（spec 3 節）
+  function norm(text) {
+    return String(text)
+      .replace(/[！-～]/g, (c) => String.fromCharCode(c.charCodeAt(0) - 0xFEE0))
+      .replace(/[A-Z]/g, (c) => c.toLowerCase());
+  }
+
+  function splitTerms(query) {
+    const seen = new Set();
+    const terms = [];
+    for (const raw of String(query).split(/[\s　]+/)) {
+      if (!raw) continue;
+      const key = norm(raw);
+      if (seen.has(key)) continue;
+      seen.add(key);
+      terms.push({ raw, key });
+    }
+    return terms;
+  }
+
+  function firstHit(list, key) {
+    for (const text of list) if (norm(text).includes(key)) return text;
+    return null;
+  }
+
+  function matchEntry(entry, terms) {
+    const best = [];
+    const absent = [];
+    let fileHit = false;
+    for (const term of terms) {
+      const k = term.key;
+      const found = [];
+      const q = firstHit(entry.targeted_questions, k);
+      if (q) found.push({ kind: "targeted", text: q, weight: WEIGHT.targeted });
+      if (entry.entrance) {
+        if (norm(entry.title).includes(k)) found.push({ kind: "title", text: entry.title, weight: WEIGHT.file });
+        const a = firstHit(entry.aliases, k);
+        if (a) found.push({ kind: "alias", text: a, weight: WEIGHT.file });
+        const o = firstHit(entry.questions, k);
+        if (o) found.push({ kind: "question", text: o, weight: WEIGHT.file });
+        // summary はファイルの一文。全節に効かせると全節が同じ強さで当たるので入口だけ
+        if (norm(entry.summary).includes(k)) found.push({ kind: "summary", text: entry.summary, weight: WEIGHT.summary });
+      }
+      if (norm(entry.heading).includes(k)) found.push({ kind: "heading", text: entry.heading, weight: WEIGHT.heading });
+      if (norm(entry.body).includes(k)) found.push({ kind: "body", text: entry.body, weight: WEIGHT.body });
+      if (!found.length) { absent.push(term.raw); continue; }
+      if (found.some((h) => ["title", "alias", "question", "summary"].includes(h.kind))) fileHit = true;
+      found.sort((a, b) => b.weight - a.weight);
+      best.push(Object.assign({ term: term.raw, key: k }, found[0]));
+    }
+    if (!best.length) return null;
+    return {
+      entry,
+      hits: best,
+      absent,
+      fileHit,
+      score: best.reduce((sum, h) => sum + h.weight, 0),
+      targeted: best.some((h) => h.kind === "targeted"),
+      bodyOnly: best.every((h) => h.kind === "body"),
+    };
+  }
+
+  function byRank(a, b) {
+    return (b.matched - a.matched) || (b.score - a.score)
+      || String(b.entry.updated).localeCompare(String(a.entry.updated))
+      || a.entry.title.localeCompare(b.entry.title, "ja")
+      || (a.entry.number - b.entry.number);
+  }
+
+  function passes(entry, filters) {
+    if (filters.reader && !entry.readers.includes(filters.reader)) return false;
+    if (filters.series && !entry.series.includes(filters.series)) return false;
+    return true;
+  }
+
+  /* 返すのは main（語の数の順の本命）と body（本文だけ・一番下）。
+     入口の下にぶら下がる節は card.children。宛先付きの質問で当たった節は、
+     一番強い当たりなのでぶら下げず、入口と並べて独立の一件にする。 */
+  function search(entries, query, filters) {
+    const terms = splitTerms(query);
+    const f = filters || {};
+    const results = [];
+    for (const entry of entries) {
+      if (!passes(entry, f)) continue;
+      const r = matchEntry(entry, terms);
+      if (r) results.push(r);
+    }
+    const doors = new Map();
+    for (const r of results) if (r.fileHit && r.entry.entrance) doors.set(r.entry.title, Object.assign(r, { type: "door", children: [] }));
+
+    const main = [];
+    const body = [];
+    for (const r of results) {
+      r.matched = r.hits.length;
+      if (r.type === "door") { main.push(r); continue; }
+      r.type = "section";
+      const door = doors.get(r.entry.title);
+      if (door && !r.targeted) { door.children.push(r); continue; }
+      (r.bodyOnly ? body : main).push(r);
+    }
+    for (const door of doors.values()) {
+      const have = new Set(door.hits.map((h) => h.key));
+      for (const child of door.children) for (const h of child.hits) have.add(h.key);
+      door.matched = have.size;
+      door.absent = terms.filter((t) => !have.has(t.key)).map((t) => t.raw);
+      door.children.sort((a, b) => (b.matched - a.matched) || (b.score - a.score) || (a.entry.number - b.entry.number));
+    }
+    main.sort(byRank);
+    body.sort(byRank);
+    return { terms, main, body, total: results.length };
+  }
+
+  /* ---- 反応の一行（format.md 7 節の形） ---- */
+
+  function today(now) {
+    const d = now || new Date();
+    const pad = (n) => String(n).padStart(2, "0");
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+  }
+  const cell = (text) => String(text).replace(/\|/g, " ").replace(/\s+/g, " ").trim();
+  function reactionLine(date, query, title, number, reaction) {
+    return `- ${date} | ${cell(query)} | ${cell(title)} | 節 ${number} | ${reaction} |`;
+  }
+  function noHitLine(date, query) {
+    return `- ${date} | ${cell(query)} |  |  |  | 出なかった`;
+  }
+
+  /* ---- 文字の組み立て（ここで作る HTML は全部 esc を通す） ---- */
+
+  function esc(text) {
+    return String(text).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  }
+
+  // terms の当たった所を mark で包む。norm は長さを変えないので位置はそのまま使える
+  function highlight(text, terms) {
+    const source = String(text);
+    if (!terms || !terms.length) return esc(source);
+    const hay = norm(source);
+    const ranges = [];
+    for (const term of terms) {
+      for (let at = hay.indexOf(term.key); at !== -1; at = hay.indexOf(term.key, at + term.key.length)) {
+        ranges.push([at, at + term.key.length]);
+      }
+    }
+    if (!ranges.length) return esc(source);
+    ranges.sort((a, b) => a[0] - b[0]);
+    let out = "";
+    let pos = 0;
+    for (const [start, end] of ranges) {
+      if (end <= pos) continue;
+      const from = Math.max(start, pos);
+      out += esc(source.slice(pos, from)) + "<mark>" + esc(source.slice(from, end)) + "</mark>";
+      pos = end;
+    }
+    return out + esc(source.slice(pos));
+  }
+
+  function snippet(text, key, reach) {
+    const span = reach || 20;
+    const source = String(text).replace(/\s+/g, " ");
+    const at = norm(source).indexOf(key);
+    if (at === -1) return source.slice(0, span * 2);
+    const start = Math.max(0, at - span);
+    const end = Math.min(source.length, at + key.length + span);
+    return (start > 0 ? "…" : "") + source.slice(start, end) + (end < source.length ? "…" : "");
+  }
+
+  function hashFor(state) {
+    const p = new URLSearchParams();
+    for (const key of ["q", "r", "s", "t", "n", "m"]) {
+      if (state[key] !== undefined && state[key] !== null && state[key] !== "") p.set(key, state[key]);
+    }
+    return "#" + p.toString();
+  }
+
+  function buildLookup(entries) {
+    const byTitle = new Map();
+    const aliasTitle = new Map();
+    for (const e of entries) {
+      if (!byTitle.has(e.title)) byTitle.set(e.title, new Map());
+      const sections = byTitle.get(e.title);
+      if (!sections.has(e.number)) sections.set(e.number, e);
+      if (e.entrance) sections.set("entrance", e);
+    }
+    for (const e of entries) {
+      for (const alias of e.aliases) if (!byTitle.has(alias) && !aliasTitle.has(alias)) aliasTitle.set(alias, e.title);
+    }
+    return {
+      resolve(name) {
+        return byTitle.has(name) ? name : (aliasTitle.get(name) || null);
+      },
+      section(title, number) {
+        const sections = byTitle.get(title);
+        return sections ? sections.get(number) || null : null;
+      },
+      entrance(title) {
+        const sections = byTitle.get(title);
+        return sections ? sections.get("entrance") || null : null;
+      },
+      titles() { return [...byTitle.keys()]; },
+    };
+  }
+
+  const INLINE = new RegExp([
+    "(`(?![)）])[^`\\n]+`)",                                                // 1 コード（閉じ括弧の前の ` は顔文字 (´･ω･`) の一部）
+    "(\\*\\*.+?\\*\\*)",                                                    // 2 強調
+    "(\\[\\[[^\\[\\]]+\\]\\](?:\\s*の\\s*節\\s*\\d+(?:\\s*の\\s*\\d+(?:-[0-9a-z]+)+)?)?)", // 3 別のマニュアル
+    "(〔[^〔〕]*〕)",                                                        // 4 印
+    "((?<![\\p{Script=Han}])節\\s*\\d+(?:\\s*の\\s*\\d+(?:-[0-9a-z]+)+)?)",  // 5 節 N
+    "(\\[[^\\]\\n]+\\]\\(https?:[^)\\s]+\\))",                              // 6 リンク
+    "(https?:\\/\\/[^\\s<>）」、。]+)",                                       // 7 URL そのまま
+  ].join("|"), "gu");
+
+  const NUMBER_PART = /節\s*(\d+)(?:\s*の\s*(\d+(?:-[0-9a-z]+)+))?/u;
+
+  function renderInline(text, ctx) {
+    let out = "";
+    let pos = 0;
+    INLINE.lastIndex = 0;
+    const source = String(text);
+    const matches = [...source.matchAll(INLINE)];
+    for (const m of matches) {
+      out += highlight(source.slice(pos, m.index), ctx.terms);
+      pos = m.index + m[0].length;
+      if (m[1]) out += "<code>" + highlight(m[1].slice(1, -1), ctx.terms) + "</code>";
+      else if (m[2]) out += "<strong>" + renderInline(m[2].slice(2, -2), ctx) + "</strong>";
+      else if (m[3]) out += renderWikilink(m[3], ctx);
+      else if (m[4]) out += renderMark(m[4], ctx);
+      else if (m[5]) out += renderSectionRef(m[5], ctx);
+      else if (m[6]) {
+        const split = m[6].lastIndexOf("](");
+        out += `<a href="${esc(m[6].slice(split + 2, -1))}" rel="noopener noreferrer">${highlight(m[6].slice(1, split), ctx.terms)}</a>`;
+      } else if (m[7]) {
+        // 「(https://example.com/x)」の閉じ括弧は URL に入れない
+        let url = m[7];
+        let tail = "";
+        while (/[).,]$/.test(url) && (!url.endsWith(")") || (url.match(/\(/g) || []).length < (url.match(/\)/g) || []).length)) {
+          tail = url.slice(-1) + tail;
+          url = url.slice(0, -1);
+        }
+        out += `<a href="${esc(url)}" rel="noopener noreferrer">${highlight(url, ctx.terms)}</a>${esc(tail)}`;
+      }
+    }
+    return out + highlight(source.slice(pos), ctx.terms);
+  }
+
+  function renderMark(text, ctx) {
+    const inner = renderInline(text.slice(1, -1), ctx);
+    const kind = text.startsWith("〔仮") ? "kari" : text.startsWith("〔空欄") ? "blank" : "source";
+    return `<span class="${kind}">〔${inner}〕</span>`;
+  }
+
+  function renderSectionRef(text, ctx) {
+    const m = text.match(NUMBER_PART);
+    const number = Number(m[1]);
+    if (!ctx.lookup.section(ctx.title, number)) return esc(text);
+    return `<a href="${esc(hashFor(Object.assign({}, ctx.state, { t: ctx.title, n: number, m: m[2] || "" })))}">${esc(text)}</a>`;
+  }
+
+  function renderWikilink(text, ctx) {
+    const close = text.indexOf("]]");
+    const inside = text.slice(2, close);
+    const rest = text.slice(close + 2);
+    const bar = inside.indexOf("|");
+    const name = (bar === -1 ? inside : inside.slice(0, bar)).trim();
+    const label = (bar === -1 ? inside : inside.slice(bar + 1)).trim();
+    const title = ctx.lookup.resolve(name);
+    if (!title) return `<span class="missing">${highlight(label, ctx.terms)}（未作成）</span>${esc(rest)}`;
+    const m = rest.match(NUMBER_PART);
+    const number = m ? Number(m[1]) : null;
+    const target = number !== null && ctx.lookup.section(title, number) ? number : ctx.lookup.entrance(title).number;
+    return `<a href="${esc(hashFor(Object.assign({}, ctx.state, { t: title, n: target, m: m && m[2] ? m[2] : "" })))}">${highlight(label, ctx.terms)}${esc(rest)}</a>`;
+  }
+
+  const FUDA = /^(注意|済んだ合図|やらない)\s*[:：]\s*/u;
+  const STEP = /^(\d+(?:-[0-9a-z]+)+)\.\s+/;
+
+  // 行頭の札と小段の番号を拾ってから行内へ
+  function renderLine(text, ctx) {
+    let rest = text;
+    let lead = "";
+    const step = rest.match(STEP);
+    if (step) {
+      lead += `<span class="step" id="step-${esc(step[1])}">${esc(step[1])}</span>`;
+      rest = rest.slice(step[0].length);
+    }
+    const fuda = rest.match(FUDA);
+    if (fuda) {
+      lead += `<span class="fuda fuda-${fuda[1]}">${fuda[1]}:</span> `;
+      rest = rest.slice(fuda[0].length);
+    }
+    return lead + renderInline(rest, ctx);
+  }
+
+  // build_reader.py の囲いの判定と揃える（後ろに書けるのは言語名だけ。「~~~だよ」は文章）
+  const FENCE = /^ {0,3}(~~~+|```+)\s*[A-Za-z0-9_.+-]*\s*$/;
+  const FENCE_CLOSE = /^ {0,3}(~~~+|```+)\s*$/;
+  const LIST_FENCE = /^\s+(~~~+|```+)\s*[A-Za-z0-9_.+-]*\s*$/;
+  const LIST_FENCE_CLOSE = /^\s*(~~~+|```+)\s*$/;
+
+  // 閉じる行を探す。無ければ -1（閉じない囲いは囲いと見なさず、文章のまま見せる）
+  function findClose(lines, from, marker, closeRe) {
+    for (let i = from; i < lines.length; i++) {
+      const close = lines[i].match(closeRe);
+      if (close && close[1][0] === marker[0] && close[1].length >= marker.length) return i;
+    }
+    return -1;
+  }
+  const HEADING = /^(#{1,6})\s+(.*)$/;
+  const LIST_ITEM = /^(\s*)([-*+]|\d+\.)\s+(.*)$/;
+  const RULE = /^\s*(-{3,}|\*{3,}|_{3,})\s*$/;
+  const TABLE_SEP = /^\s*\|?\s*:?-{1,}:?\s*(\|\s*:?-{1,}:?\s*)*\|?\s*$/;
+
+  // [[題|名]] と `a|b` の中の | では割らない
+  function tableCells(line) {
+    const text = line.trim().replace(/^\|/, "").replace(/\|$/, "");
+    const cells = [];
+    let cell = "";
+    let wiki = false;
+    let code = false;
+    for (let i = 0; i < text.length; i++) {
+      if (!code && text.startsWith("[[", i)) wiki = true;
+      if (!code && text.startsWith("]]", i)) wiki = false;
+      if (text[i] === "`") code = !code;
+      if (text[i] === "|" && !wiki && !code) { cells.push(cell.trim()); cell = ""; continue; }
+      cell += text[i];
+    }
+    cells.push(cell.trim());
+    return cells;
+  }
+
+  function startsBlock(lines, i) {
+    const line = lines[i];
+    return FENCE.test(line) || HEADING.test(line) || LIST_ITEM.test(line) || RULE.test(line) || /^\s*>/.test(line)
+      || (line.includes("|") && i + 1 < lines.length && lines[i + 1].includes("-") && TABLE_SEP.test(lines[i + 1]));
+  }
+
+  // 箇条書きは字下げで木にする。空行をはさんでも次が項目なら続き
+  function renderList(lines, start, ctx) {
+    const root = { indent: -1, children: [] };
+    const stack = [root];
+    let i = start;
+    let last = null;
+    while (i < lines.length) {
+      const line = lines[i];
+      const item = line.match(LIST_ITEM);
+      if (item && !RULE.test(line)) {
+        const indent = item[1].replace(/\t/g, "    ").length;
+        while (stack.length > 1 && stack[stack.length - 1].indent >= indent) stack.pop();
+        last = { indent, ordered: /\d/.test(item[2]), start: parseInt(item[2], 10), text: [item[3]], code: [], children: [] };
+        stack[stack.length - 1].children.push(last);
+        stack.push(last);
+        i++;
+      } else if (!line.trim()) {
+        let next = i + 1;
+        while (next < lines.length && !lines[next].trim()) next++;
+        if (next < lines.length && LIST_ITEM.test(lines[next]) && !RULE.test(lines[next])) { i = next; continue; }
+        break;
+      } else if (last && LIST_FENCE.test(line) && findClose(lines, i + 1, line.match(LIST_FENCE)[1], LIST_FENCE_CLOSE) !== -1) {
+        // 項目の中の囲い。空行が入っていても閉じる行まで一塊
+        const closeAt = findClose(lines, i + 1, line.match(LIST_FENCE)[1], LIST_FENCE_CLOSE);
+        const pad = line.match(/^\s*/)[0].length;
+        last.code.push(lines.slice(i + 1, closeAt).map((l) => l.slice(Math.min(pad, l.match(/^\s*/)[0].length))).join("\n"));
+        i = closeAt + 1;
+      } else if (/^\s+\S/.test(line) && last) {
+        last.text.push(line.trim());
+        i++;
+      } else break;
+    }
+    return { html: renderItems(root.children, ctx), next: i };
+  }
+
+  function renderItems(items, ctx) {
+    let out = "";
+    let i = 0;
+    while (i < items.length) {
+      const tag = items[i].ordered ? "ol" : "ul";
+      // 書かれた番号から始める（「3. 三」が 1 に化けない）
+      const start = tag === "ol" && items[i].start !== 1 ? ` start="${items[i].start}"` : "";
+      out += `<${tag}${start}>`;
+      while (i < items.length && (items[i].ordered ? "ol" : "ul") === tag) {
+        const node = items[i];
+        out += "<li>" + node.text.map((t, n) => (n ? renderInline(t, ctx) : renderLine(t, ctx))).join("<br>");
+        for (const code of node.code) out += `<pre><code>${esc(code)}</code></pre>`;
+        if (node.children.length) out += renderItems(node.children, ctx);
+        out += "</li>";
+        i++;
+      }
+      out += `</${tag}>`;
+    }
+    return out;
+  }
+
+  // Markdown の描画は小さく始める（spec 9 節）。知らない書き方はそのまま文字で見せる
+  function renderBody(body, ctx) {
+    const lines = String(body).split("\n");
+    let out = "";
+    let i = 0;
+    while (i < lines.length) {
+      const line = lines[i];
+      if (!line.trim()) { i++; continue; }
+
+      const fence = line.match(FENCE);
+      const closeAt = fence ? findClose(lines, i + 1, fence[1], FENCE_CLOSE) : -1;
+      if (closeAt !== -1) {
+        out += `<pre><code>${esc(lines.slice(i + 1, closeAt).join("\n"))}</code></pre>`;
+        i = closeAt + 1;
+        continue;
+      }
+
+      const heading = line.match(HEADING);
+      if (heading) {
+        const level = Math.min(Math.max(heading[1].length, 3), 4);
+        out += `<h${level}>${renderInline(heading[2], ctx)}</h${level}>`;
+        i++;
+        continue;
+      }
+
+      if (RULE.test(line)) { out += "<hr>"; i++; continue; }
+
+      if (line.includes("|") && i + 1 < lines.length && lines[i + 1].includes("-") && TABLE_SEP.test(lines[i + 1])) {
+        const head = tableCells(line);
+        i += 2;
+        let rows = "";
+        while (i < lines.length && lines[i].trim() && lines[i].includes("|")) {
+          rows += "<tr>" + tableCells(lines[i]).map((c) => `<td>${renderInline(c, ctx)}</td>`).join("") + "</tr>";
+          i++;
+        }
+        out += `<div class="table-wrap"><table><thead><tr>${head.map((c) => `<th>${renderInline(c, ctx)}</th>`).join("")}</tr></thead><tbody>${rows}</tbody></table></div>`;
+        continue;
+      }
+
+      if (/^\s*>/.test(line)) {
+        const quote = [];
+        while (i < lines.length && /^\s*>/.test(lines[i])) {
+          quote.push(lines[i].replace(/^\s*>\s?/, ""));
+          i++;
+        }
+        out += `<blockquote>${renderBody(quote.join("\n"), ctx)}</blockquote>`;
+        continue;
+      }
+
+      if (LIST_ITEM.test(line)) {
+        const list = renderList(lines, i, ctx);
+        out += list.html;
+        i = list.next;
+        continue;
+      }
+
+      const para = [];
+      while (i < lines.length && lines[i].trim() && !(para.length && startsBlock(lines, i))) {
+        para.push(lines[i].trim());
+        i++;
+      }
+      out += `<p>${para.map((t) => renderLine(t, ctx)).join("<br>")}</p>`;
+    }
+    return out;
+  }
+
+  const api = { norm, splitTerms, search, today, reactionLine, noHitLine, esc, highlight, snippet, hashFor, buildLookup, renderBody, renderInline, WEIGHT, BODY_LIMIT, CHILD_LIMIT };
+  if (typeof globalThis !== "undefined") globalThis.YOBIMIZU = api;
+  if (typeof document === "undefined") return;
+
+  /* ---- 画面 ---- */
+
+  const data = JSON.parse(document.getElementById("index").textContent);
+  const entries = data.entries;
+  const lookup = buildLookup(entries);
+  const $ = (id) => document.getElementById(id);
+  const input = $("q");
+
+  const readerValues = [...new Set(entries.flatMap((e) => e.readers))];
+  const seriesValues = [...new Set(entries.flatMap((e) => e.series))];
+  const allQuestions = [...new Set(entries.flatMap((e) => [...e.questions, ...e.targeted_questions]))];
+  const examples = allQuestions.slice();
+  for (let i = examples.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [examples[i], examples[j]] = [examples[j], examples[i]];
+  }
+
+  $("built").textContent = "索引を作った日 " + data.built;
+
+  function readState() {
+    const p = new URLSearchParams(location.hash.slice(1));
+    const n = p.get("n");
+    return {
+      q: p.get("q") || "",
+      r: p.get("r") || "",
+      s: p.get("s") || "",
+      t: p.get("t") || "",
+      n: n === null || n === "" ? null : Number(n),
+      m: p.get("m") || "",
+    };
+  }
+
+  function chips(name, values, key, state) {
+    if (values.length < 2) return "";
+    const one = (label, value) => `<button type="button" class="chip" data-key="${key}" data-value="${esc(value)}" aria-pressed="${state[key] === value}">${esc(label)}</button>`;
+    return `<div class="filter-row"><span class="filter-name">${esc(name)}</span>${one("全部", "")}${values.map((v) => one(v, v)).join("")}</div>`;
+  }
+  const filtersHtml = (state) => {
+    const rows = chips("読み手", readerValues, "r", state) + chips("まとまり", seriesValues, "s", state);
+    return rows ? `<div class="filters">${rows}</div>` : "";
+  };
+
+  const HIT_LABEL = {
+    targeted: (h, entry) => `想定質問「${highlight(h.text, [h])}」（節 ${esc(entry.number)}）で当たり`,
+    question: (h) => `想定質問「${highlight(h.text, [h])}」で当たり（入口）`,
+    title: () => "題名で当たり（入口）",
+    alias: (h) => `別名「${highlight(h.text, [h])}」で当たり（入口）`,
+    summary: (h) => `要約「${highlight(snippet(h.text, h.key), [h])}」で当たり（入口）`,
+    heading: () => "見出しで当たり",
+    body: (h) => `本文「${highlight(snippet(h.text, h.key), [h])}」で当たり`,
+  };
+  const whereHtml = (card) => card.hits.map((h) => HIT_LABEL[h.kind](h, card.entry)).join("<br>");
+
+  function tagsHtml(entry) {
+    const tags = [];
+    if (entry.kari) tags.push(`<span class="tag-kari">〔仮〕${entry.kari}</span>`);
+    if (entry.kuuran) tags.push(`<span class="tag-blank">〔空欄〕${entry.kuuran}</span>`);
+    for (const f of entry.fuda) tags.push(`<span>${esc(f)}あり</span>`);
+    if (entry.readers.length) tags.push(`<span>読み手: ${esc(entry.readers[0])}</span>`);
+    if (entry.updated) tags.push(`<span>更新 ${esc(entry.updated)}</span>`);
+    return tags.length ? `<p class="tags">${tags.join("")}</p>` : "";
+  }
+
+  function openHash(state, entry) {
+    return hashFor(Object.assign({}, state, { t: entry.title, n: entry.number, m: "" }));
+  }
+  const isCurrent = (state, entry) => state.t === entry.title && state.n === entry.number;
+
+  function cardHtml(card, state, sameFile) {
+    const e = card.entry;
+    const door = card.type === "door" ? '<span class="door">入口</span>' : "";
+    let out = `<section class="hit${sameFile ? " same-file" : ""}"${isCurrent(state, e) ? ' aria-current="true"' : ""}>`;
+    out += `<h3 class="hit-title"><a href="${esc(openHash(state, e))}">${door}<span class="hit-file">${esc(e.title)} ›</span> ${esc(e.number)}. ${esc(e.heading)}</a></h3>`;
+    if (e.summary) out += `<p class="hit-summary">${esc(e.summary)}</p>`;
+    out += tagsHtml(e);
+    out += `<p class="where">${whereHtml(card)}</p>`;
+    if (card.absent.length) out += `<p class="absent">${card.absent.map((t) => `『${esc(t)}』`).join("")}は含まれていません</p>`;
+    if (card.children && card.children.length) {
+      const item = (c) => `<li${isCurrent(state, c.entry) ? ' aria-current="true"' : ""}><a href="${esc(openHash(state, c.entry))}">› ${esc(c.entry.number)}. ${esc(c.entry.heading)}</a><span class="where">${whereHtml(c)}</span></li>`;
+      const shown = card.children.slice(0, CHILD_LIMIT);
+      const hidden = card.children.slice(CHILD_LIMIT);
+      out += `<ul class="children">${shown.map(item).join("")}</ul>`;
+      const holdsOpen = hidden.some((c) => isCurrent(state, c.entry));
+      if (hidden.length) out += `<details class="more"${holdsOpen ? " open" : ""}><summary>同じ題名の他の ${hidden.length} 節</summary><ul class="children">${hidden.map(item).join("")}</ul></details>`;
+    }
+    return out + "</section>";
+  }
+
+  function cardsHtml(cards, state) {
+    let previous = null;
+    return cards.map((card) => {
+      const html = cardHtml(card, state, previous === card.entry.title);
+      previous = card.entry.title;
+      return html;
+    }).join("");
+  }
+
+  function landingHtml(state) {
+    if (!entries.length) {
+      return '<div class="landing"><p>この置き場の manuals/ にはまだマニュアルがありません。本文を置いてから、索引を作り直してください。</p></div>';
+    }
+    const shown = entries.filter((e) => passes(e, { reader: state.r, series: state.s }));
+    const sum = (key) => shown.reduce((n, e) => n + e[key], 0);
+    const titles = [...new Set(shown.map((e) => e.title))];
+    const list = titles.map((t) => {
+      const e = lookup.entrance(t);
+      return `<li><a class="shelf-title" href="${esc(openHash(state, e))}">${esc(t)}</a><span class="shelf-meta">${esc(e.summary)}</span><span class="shelf-meta">更新 ${esc(e.updated)}</span></li>`;
+    }).join("");
+    const eg = examples.slice(0, 3).map((q) => `<li><a href="${esc(hashFor({ q, r: state.r, s: state.s }))}">${esc(q)}</a></li>`).join("");
+    const narrowed = state.r || state.s;
+    return `<div class="landing"><p class="shelf-stat">${narrowed ? "絞り込むと" : "この置き場には"}、題名 ${titles.length} 本、節 ${shown.length}、〔仮〕${sum("kari")}、〔空欄〕${sum("kuuran")}。</p>`
+      + (eg && !narrowed ?`<h2>こう聞けます</h2><ul>${eg}</ul>` : "")
+      + `<h2>題名から開く</h2><ul>${list}</ul></div>`;
+  }
+
+  function noHitHtml(state) {
+    const unfiltered = (state.r || state.s) ? search(entries, state.q).total : 0;
+    if (unfiltered) {
+      return `<p>今の絞り込みでは出ません。絞り込みを外すと ${unfiltered} 件あります。</p><p><a href="${esc(hashFor({ q: state.q }))}">絞り込みを外す</a></p>`;
+    }
+    const line = noHitLine(today(), state.q);
+    return `<p>出ませんでした。</p><p>言葉を変えて引くか、この一行を reactions.md に貼ってください。出なかった言葉は、別名を足す合図になります。</p>`
+      + `<textarea class="react-line" id="line" readonly rows="2" aria-label="反応の一行">${esc(line)}</textarea>`
+      + `<p><button type="button" class="copy" data-copy>コピー</button></p><p class="react-note" id="line-note" role="status"></p>`;
+  }
+
+  function renderResults(state) {
+    const box = $("results");
+    const head = filtersHtml(state);
+    if (!splitTerms(state.q).length) {
+      $("live").textContent = "";
+      box.innerHTML = head + landingHtml(state);
+      return;
+    }
+    const found = search(entries, state.q, { reader: state.r, series: state.s });
+    if (!found.total) {
+      $("live").textContent = "出ませんでした";
+      box.innerHTML = head + noHitHtml(state);
+      return;
+    }
+    const shownBody = found.body.slice(0, BODY_LIMIT);
+    const moreBody = found.body.slice(BODY_LIMIT);
+    $("live").textContent = `${found.total} 件`;
+    let html = head + `<p id="status">${found.total} 件</p>` + cardsHtml(found.main, state);
+    if (found.body.length) {
+      html += `<h2 class="band">本文の中にだけある物</h2>` + cardsHtml(shownBody, state);
+      // 開いた件が隠れないよう、中に開いた件があれば畳まない
+      const holdsOpen = moreBody.some((c) => isCurrent(state, c.entry));
+      if (moreBody.length) html += `<details class="more"${holdsOpen ? " open" : ""}><summary>本文の中にだけある物をあと ${moreBody.length} 件</summary>${cardsHtml(moreBody, state)}</details>`;
+    }
+    box.innerHTML = html;
+  }
+
+  function renderReader(state) {
+    const box = $("reader");
+    const open = state.t !== "" && state.n !== null;
+    document.body.classList.toggle("has-open", open);
+    box.hidden = !open;
+    document.title = "呼び水 置き場の検索";
+    if (!open) { box.innerHTML = ""; return; }
+
+    const closeHash = hashFor({ q: state.q, r: state.r, s: state.s });
+    const entry = lookup.section(state.t, state.n);
+    if (!entry) {
+      box.innerHTML = `<p>この節は今の索引にありません。題名か番号が変わったか、索引が古い可能性があります。</p><p><a href="${esc(closeHash)}">一覧へ戻る</a></p>`;
+      return;
+    }
+    document.title = `${entry.title} › ${entry.number}. ${entry.heading}`;
+    const terms = splitTerms(state.q);
+    const ctx = { terms, lookup, title: entry.title, state: { q: state.q, r: state.r, s: state.s } };
+    const siblings = entries.filter((e) => e.title === entry.title);
+    const toc = siblings.map((e) => `<li><a href="${esc(openHash(state, e))}"${e === entry ? ' aria-current="true"' : ""}>${esc(e.number)}. ${esc(e.heading)}</a></li>`).join("");
+
+    const meta = [];
+    const titleLink = (name) => {
+      const t = lookup.resolve(name);
+      if (!t) return `<span class="missing">${esc(name)}（未作成）</span>`;
+      return `<a href="${esc(openHash(state, lookup.entrance(t)))}">${esc(t)}</a>`;
+    };
+    for (const name of entry.series) {
+      const others = lookup.titles().filter((t) => t !== entry.title && lookup.entrance(t).series.includes(name));
+      meta.push(["まとまり", esc(name) + (others.length ? `（同じまとまり: ${others.map(titleLink).join("、")}）` : "")]);
+    }
+    if (entry.related.length) meta.push(["似ているけど別", entry.related.map(titleLink).join("、")]);
+    if (entry.record_line) meta.push(["記録", esc(entry.record_line)]);
+    if (entry.readers.length) meta.push(["読み手", entry.readers.map(esc).join("、")]);
+    const dates = [entry.created && `作成 ${esc(entry.created)}`, entry.updated && `更新 ${esc(entry.updated)}`].filter(Boolean).join(" ／ ");
+    if (dates) meta.push(["日付", dates]);
+
+    box.innerHTML = `<div class="close-row"><a href="${esc(closeHash)}">一覧へ戻る</a></div>`
+      + `<p class="doc-title">${esc(entry.title)}</p>`
+      + `<h2 class="doc-heading" id="doc-heading" tabindex="-1">${esc(entry.number)}. ${esc(entry.heading)}</h2>`
+      + (siblings.length > 1 ? `<details class="toc"><summary>この題名の節を見る</summary><ol>${toc}</ol></details>` : "")
+      + `<div class="doc">${renderBody(entry.body, ctx)}</div>`
+      + (meta.length ? `<dl class="doc-meta">${meta.map(([k, v]) => `<dt>${esc(k)}</dt><dd>${v}</dd>`).join("")}</dl>` : "")
+      + `<div class="react"><p class="react-q">この答えは:</p><div class="react-buttons">`
+      + ["役に立った", "部分的", "見当違い", "渡した"].map((r) => `<button type="button" data-react="${r}" aria-pressed="false">${r}</button>`).join("")
+      + `</div><div id="react-out"></div></div>`;
+    box.dataset.title = entry.title;
+    box.dataset.number = entry.number;
+  }
+
+  let lastOpen = null;      // 開いている一節 { t, n }
+  let lastOpenKey = null;
+  let listScroll = 0;       // 狭い画面で一覧から開いた時の位置
+  let refocusChip = null;   // 絞り込みを押した後、同じチップへ戻す
+
+  function afterRender(state) {
+    const key = state.t + "\u0000" + state.n;
+    const narrow = window.matchMedia("(max-width: 900px)").matches;
+    if (refocusChip) {
+      const chip = [...document.querySelectorAll(".chip")].find((c) => c.dataset.key === refocusChip.key && c.dataset.value === refocusChip.value);
+      refocusChip = null;
+      if (chip) chip.focus({ preventScroll: true });
+    }
+    // 閉じた時: 開いていた件へ戻す（中身を作り直すとフォーカスが迷子になる）
+    if (lastOpen && !(state.t && state.n !== null)) {
+      const href = hashFor({ q: state.q, r: state.r, s: state.s, t: lastOpen.t, n: lastOpen.n });
+      const link = [...document.querySelectorAll("#results a")].find((a) => a.getAttribute("href") === href);
+      if (document.activeElement === document.body || !document.activeElement) (link || input).focus({ preventScroll: true });
+      if (narrow) window.scrollTo(0, listScroll);
+    }
+    lastOpen = state.t && state.n !== null ? { t: state.t, n: state.n } : null;
+    if (state.t && state.n !== null && key !== lastOpenKey) {
+      const heading = $("doc-heading");
+      $("reader").scrollTop = 0;
+      if (narrow) window.scrollTo(0, 0);
+      if (heading && document.activeElement !== input) heading.focus({ preventScroll: true });
+    }
+    lastOpenKey = state.t && state.n !== null ? key : null;
+    if (state.m) {
+      const step = document.getElementById("step-" + state.m);
+      if (step) {
+        // 広い画面では紙の中だけ動かす（ページごと動くと検索窓が隠れる）
+        const reader = $("reader");
+        if (reader.scrollHeight > reader.clientHeight) {
+          const offset = step.getBoundingClientRect().top - reader.getBoundingClientRect().top;
+          reader.scrollTop += offset - reader.clientHeight / 3;
+        } else {
+          step.scrollIntoView({ block: "center" });
+        }
+        step.classList.add("step-flash");
+      }
+    }
+  }
+
+  function render() {
+    const state = readState();
+    if (input.value !== state.q && !composing) input.value = state.q;
+    renderResults(state);
+    renderReader(state);
+    afterRender(state);
+  }
+
+  async function copyText(text, source) {
+    try {
+      await navigator.clipboard.writeText(text);
+      return true;
+    } catch (_) {
+      // ブラウザが許さない時の控え。選択してコピーを試す
+      if (!source) return false;
+      source.focus();
+      source.select();
+      try { return document.execCommand("copy"); } catch (__) { return false; }
+    }
+  }
+
+  let composing = false;
+  let timer = null;
+  const queryState = (q) => { const s = readState(); return { q, r: s.r, s: s.s }; };
+
+  input.addEventListener("compositionstart", () => { composing = true; clearTimeout(timer); });
+  input.addEventListener("compositionend", () => { composing = false; scheduleSearch(); });
+  input.addEventListener("input", () => { if (!composing) scheduleSearch(); });
+  function scheduleSearch() {
+    clearTimeout(timer);
+    timer = setTimeout(() => {
+      const current = readState();
+      if (input.value === current.q) return;
+      const next = hashFor(queryState(input.value));
+      // 打ち始めと、開いた節から打ち直す時だけ履歴を一つ積む（戻ると元の画面へ）。打っている間は積まない
+      if (!current.q || current.t) location.hash = next; else location.replace(next);
+    }, 200);
+  }
+
+  $("search").addEventListener("submit", (event) => {
+    event.preventDefault();
+    clearTimeout(timer);
+    const ripple = $("ripple");
+    ripple.classList.remove("go");
+    void ripple.offsetWidth;
+    ripple.classList.add("go");
+    const next = hashFor(queryState(input.value));
+    if (location.hash === next) render(); else location.hash = next;
+  });
+
+  document.addEventListener("click", async (event) => {
+    if (event.target.closest("#results a")) listScroll = window.scrollY;
+    const chip = event.target.closest(".chip");
+    if (chip) {
+      refocusChip = { key: chip.dataset.key, value: chip.dataset.value };
+      const s = readState();
+      s[chip.dataset.key] = chip.dataset.value;
+      s.m = "";
+      location.hash = hashFor(s);
+      return;
+    }
+    const react = event.target.closest("[data-react]");
+    if (react) {
+      const box = $("reader");
+      const line = reactionLine(today(), readState().q, box.dataset.title, box.dataset.number, react.dataset.react);
+      box.querySelectorAll("[data-react]").forEach((b) => b.setAttribute("aria-pressed", String(b === react)));
+      $("react-out").innerHTML = `<textarea class="react-line" id="line" readonly rows="2" aria-label="反応の一行">${esc(line)}</textarea><p class="react-note" id="line-note" role="status"></p>`;
+      const ok = await copyText(line, $("line"));
+      $("line-note").textContent = ok
+        ? "コピーしました。reactions.md の末尾に貼って、一言を足してください。"
+        : "コピーできませんでした。上の一行を選んでコピーし、reactions.md の末尾に貼ってください。";
+      return;
+    }
+    if (event.target.closest("[data-copy]")) {
+      const ok = await copyText($("line").value, $("line"));
+      $("line-note").textContent = ok
+        ? "コピーしました。reactions.md の末尾に貼ってください。"
+        : "コピーできませんでした。上の一行を選んでコピーしてください。";
+    }
+  });
+
+  window.addEventListener("hashchange", render);
+  render();
+})();
+</script>
+</body>
+</html>
