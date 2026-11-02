@@ -19,6 +19,18 @@
 
 先に出来上がりを見たい人は `python reader/build_reader.py shelf/example` で見本の検索窓を作って開くか、`shelf/example/manuals/` の三本へ。読み手が LLM の手順、読み手が本人の手順、心得寄りの物、の三種類です。
 
+## 必要な環境
+
+| 何をするか | 要る物 |
+|---|---|
+| 引くだけ | ブラウザ。できた `reader.html` を開けば動きます。サーバーもネット接続も要らず、ファイルを渡せば Python のない端末でも使えます |
+| 検索窓を作る | Python 3.10 以上（のはず）。入れるパッケージはなく、標準ライブラリだけで動きます |
+| 読む側を直してテストする | 上の Python と Node.js（`node --test reader/tests/test_core.mjs`）。Python 側のテストは `python -m unittest discover reader/tests` |
+
+聞き取りとまとめには、台本を貼れる LLM が別に要ります。
+
+確かめた範囲: 作るのは Windows の Python 3.14 で、それより古い版は試していません。検索窓は Windows の Chrome で動かしました（スマホ幅は Chrome で幅を再現した物）。Edge の検索画面と、Firefox・Safari・スマホの実機は未確認です。
+
 ## 状態
 
 作っている途中。書く側と置き場の型は文章として一通り揃い、読む側は検索・開く・反応の一行まで動く。Build mainly with Claude Code: 茶々入れ2026
