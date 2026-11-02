@@ -95,6 +95,13 @@ test("絞り込み", () => {
   assert.equal(Y.search(entries, "語", { reader: "無" }).total, 0);
 });
 
+test("絞り込みの開閉型は、どちらかの選択肢が 6 以上の時だけ", () => {
+  assert.equal(Y.collapseFilters(4, 2), false); // 今の見本
+  assert.equal(Y.collapseFilters(5, 5), false);
+  assert.equal(Y.collapseFilters(6, 0), true);
+  assert.equal(Y.collapseFilters(1, 6), true);
+});
+
 test("同点は updated の新しい順", () => {
   const entries = [entry({ title: "古", heading: "語", updated: "2026-01-01" }), entry({ title: "新", heading: "語", updated: "2026-02-01" })];
   assert.equal(Y.search(entries, "語").main[0].entry.title, "新");

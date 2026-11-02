@@ -84,6 +84,11 @@ form button {
 .pool { padding: 2.3rem clamp(1rem, 4vw, 3rem) 4rem; display: grid; grid-template-columns: minmax(0, 46rem); gap: 2rem; align-items: start; }
 .has-open .pool { grid-template-columns: minmax(20rem, 29rem) minmax(0, 1fr); }
 .filters { display: grid; gap: .3rem; margin-bottom: 1.1rem; font-size: .88rem; }
+.filter-box { margin-bottom: 1.1rem; font-size: .88rem; }
+.filter-box summary { cursor: pointer; color: var(--line); padding: .1rem 0; }
+.filter-box .filters { margin: .4rem 0 0; max-height: 40vh; overflow-y: auto; }
+.filter-now { display: block; margin: -.8rem 0 1.1rem; color: var(--ink-soft); font-size: .84rem; }
+.filter-box[open] + .filter-now { display: none; } /* 開いていればチップの色で分かる */
 .filter-row { display: flex; flex-wrap: wrap; gap: .3rem .35rem; align-items: center; }
 .filter-name { color: var(--ink-soft); margin-right: .25rem; }
 .chip {
@@ -218,6 +223,11 @@ form button {
   const WEIGHT = { targeted: 100, file: 80, heading: 40, summary: 20, body: 5 };
   const BODY_LIMIT = 5;      // 本文だけの当たりを最初に見せる数（spec 3 節）
   const CHILD_LIMIT = 5;     // 入口にぶら下げる節を最初に見せる数
+  const FILTER_COLLAPSE_AT = 6; // 読み手かまとまりの選択肢がこの数以上なら、絞り込みを開閉型に畳む
+
+  function collapseFilters(readerCount, seriesCount) {
+    return Math.max(readerCount, seriesCount) >= FILTER_COLLAPSE_AT;
+  }
 
   // 長さを変えずに揃える（当たった位置を元の文字列にそのまま使うため）。かなは揃えない（spec 3 節）
   function norm(text) {
@@ -678,7 +688,7 @@ form button {
     return out;
   }
 
-  const api = { norm, splitTerms, search, today, reactionLine, noHitLine, esc, highlight, snippet, hashFor, buildLookup, renderBody, renderInline, WEIGHT, BODY_LIMIT, CHILD_LIMIT };
+  const api = { collapseFilters, norm, splitTerms, search, today, reactionLine, noHitLine, esc, highlight, snippet, hashFor, buildLookup, renderBody, renderInline, WEIGHT, BODY_LIMIT, CHILD_LIMIT };
   if (typeof globalThis !== "undefined") globalThis.YOBIMIZU = api;
   if (typeof document === "undefined") return;
 
@@ -719,9 +729,15 @@ form button {
     const one = (label, value) => `<button type="button" class="chip" data-key="${key}" data-value="${esc(value)}" aria-pressed="${state[key] === value}">${esc(label)}</button>`;
     return `<div class="filter-row"><span class="filter-name">${esc(name)}</span>${one("全部", "")}${values.map((v) => one(v, v)).join("")}</div>`;
   }
+  let filtersOpen = null;   // 人が開閉したらそれに従う。まだなら絞り込み中だけ開く
   const filtersHtml = (state) => {
     const rows = chips("読み手", readerValues, "r", state) + chips("まとまり", seriesValues, "s", state);
-    return rows ? `<div class="filters">${rows}</div>` : "";
+    if (!rows) return "";
+    if (!collapseFilters(readerValues.length, seriesValues.length)) return `<div class="filters">${rows}</div>`;
+    const active = [state.r, state.s].filter(Boolean);
+    const open = filtersOpen === null ? active.length > 0 : filtersOpen;
+    const now = active.length ? `<span class="filter-now">絞り込み中: ${active.map(esc).join("、")}</span>` : "";
+    return `<details class="filter-box"${open ? " open" : ""}><summary>検索オプション（読み手、まとまりでの絞り）</summary><div class="filters">${rows}</div></details>${now}`;
   };
 
   const HIT_LABEL = {
@@ -1008,6 +1024,11 @@ form button {
         : "コピーできませんでした。上の一行を選んでコピーしてください。";
     }
   });
+
+  // toggle は泡立たないので捕捉で拾う。結果を作り直しても開閉を保つ
+  document.addEventListener("toggle", (event) => {
+    if (event.target.classList && event.target.classList.contains("filter-box")) filtersOpen = event.target.open;
+  }, true);
 
   window.addEventListener("hashchange", render);
   render();
