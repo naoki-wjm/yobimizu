@@ -894,7 +894,7 @@ form button {
       + `<div class="doc">${renderBody(entry.body, ctx)}</div>`
       + (meta.length ? `<dl class="doc-meta">${meta.map(([k, v]) => `<dt>${esc(k)}</dt><dd>${v}</dd>`).join("")}</dl>` : "")
       + `<div class="react"><p class="react-q">この答えは:</p><div class="react-buttons">`
-      + ["役に立った", "部分的", "見当違い", "渡した"].map((r) => `<button type="button" data-react="${r}" aria-pressed="false">${r}</button>`).join("")
+      + ["役に立った", "部分的", "見当違い", "人に渡した"].map((r) => `<button type="button" data-react="${r}" aria-pressed="false">${r}</button>`).join("")
       + `</div><div id="react-out"></div></div>`;
     box.dataset.title = entry.title;
     box.dataset.number = entry.number;
