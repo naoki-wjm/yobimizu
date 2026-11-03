@@ -15,7 +15,7 @@
 1. **聞き取る**: `yobimizu-kumiage/script.md` を LLM に貼り（Claude Code ならフォルダごとスキルとして入れ）、聞かれた問いに一つずつ答える。弾（回）ごとに聞き取りの記録が返ってくる
 2. **まとめる**: 記録と `shelf/format.md` を LLM に渡して、マニュアル本文を書いてもらう。聞き取りをした LLM と同じでなくてよい
 3. **置く**: 本文を `manuals/`、記録を `records/<題名>/` に置く。形は `shelf/example/` と同じ
-4. **引く**: 置き場を指して `python reader/build_reader.py <置き場のパス>` を実行し、できた `<置き場>/reader.html` をブラウザで開いて検索する。サーバーもネットも要らない。本文を直したら作り直す
+4. **引く**: 置き場を指して `python reader/build_reader.py <置き場のパス>` を実行し、できた `<置き場>/reader.html` をブラウザで開いて検索する。サーバーもネットも要らない。本文を直したら作り直す。検索窓に LLM はいないので、打った言葉がそのまま書かれている所を探す。文のままより単語で引く方が当たる
 
 先に出来上がりを見たい人は `python reader/build_reader.py shelf/example` で見本の検索窓を作って開くか、`shelf/example/manuals/` の三本へ。読み手が LLM の手順、読み手が本人の手順、心得寄りの物、の三種類です。
 

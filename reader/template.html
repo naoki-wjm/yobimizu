@@ -138,6 +138,7 @@ form button {
 .landing ul { list-style: none; margin: 0; padding: 0; }
 .landing li { padding: .3rem 0; }
 .shelf-stat { margin: 0; }
+.search-hint { margin: .5rem 0; color: var(--ink-soft); font-size: .86rem; line-height: 1.65; }
 .shelf-title { font: 600 1.02rem/1.5 var(--mincho); }
 .shelf-meta { display: block; color: var(--ink-soft); font-size: .84rem; }
 
@@ -239,7 +240,7 @@ form button {
       <span class="built" id="built"></span>
     </div>
     <form id="search" role="search">
-      <input id="q" type="search" placeholder="何を調べますか" aria-label="検索する言葉。空白で区切ると、どれかを含む節が出ます" autocomplete="off" autofocus>
+      <input id="q" type="search" placeholder="調べたい言葉（単語で引くと当たりやすいです）" aria-label="検索する言葉。空白で区切ると、どれかを含む節が出ます" autocomplete="off" autofocus>
       <button type="submit">引く</button>
       <span class="ripple" id="ripple" aria-hidden="true"></span>
     </form>
@@ -908,6 +909,9 @@ form button {
     }).join("");
   }
 
+  // この検索窓に LLM はいない。文の意味は汲めないので、引き方を先に言っておく
+  const SEARCH_HINT = "この検索窓は、打った言葉がそのまま書かれている所を探します。文のままだと出ないことがあるので、単語で引いてみてください。空白で区切ると、どれかを含む節が出ます。";
+
   function landingHtml(state) {
     if (!entries.length) {
       return '<div class="landing"><p>この置き場の manuals/ にはまだマニュアルがありません。本文を置いてから、索引を作り直してください。</p></div>';
@@ -918,6 +922,7 @@ form button {
     const eg = examples.slice(0, 3).map((q) => `<li><a href="${esc(hashFor({ q, r: state.r, s: state.s }))}">${esc(q)}</a></li>`).join("");
     const narrowed = state.r || state.s;
     return `<div class="landing"><p class="shelf-stat">${narrowed ? "絞り込むと" : "この置き場には"}、題名 ${titles.length} 本、節 ${shown.length}、〔仮〕${sum("kari")}、〔空欄〕${sum("kuuran")}。</p>`
+      + `<p class="search-hint">${SEARCH_HINT}</p>`
       + (eg && !narrowed ? `<h2>こう聞けます</h2><ul>${eg}</ul>` : "")
       + "</div>";
   }
@@ -928,7 +933,7 @@ form button {
       return `<p>今の絞り込みでは出ません。絞り込みを外すと ${unfiltered} 件あります。</p><p><a href="${esc(hashFor({ q: state.q }))}">絞り込みを外す</a></p>`;
     }
     const line = noHitLine(today(), state.q);
-    return `<p>出ませんでした。</p><p>言葉を変えて引くか、この一行を reactions.md に貼ってください。出なかった言葉は、別名を足す合図になります。</p>`
+    return `<p>出ませんでした。</p><p class="search-hint">${SEARCH_HINT}</p><p>言葉を変えて引くか、この一行を reactions.md に貼ってください。出なかった言葉は、別名を足す合図になります。</p>`
       + `<textarea class="react-line" id="line" readonly rows="2" aria-label="反応の一行">${esc(line)}</textarea>`
       + `<p><button type="button" class="copy" data-copy>コピー</button></p><p class="react-note" id="line-note" role="status"></p>`;
   }
