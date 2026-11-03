@@ -30,6 +30,7 @@ ITEM_RE = re.compile(r"^\s*-\s+(.*)$")
 SECTION_RE = re.compile(r"^##\s+(\d+)\.\s*(.*?)\s*$")
 H2_RE = re.compile(r"^##\s")
 H1_RE = re.compile(r"^#\s")
+BLANK_SECTION_RE = re.compile(r"^##\s+空欄\s*$")
 # 開く囲い: 字下げ三つまで。後ろに書けるのは言語名だけ（「```x``` を実行」「~~~だよ」は文章）
 FENCE_OPEN_RE = re.compile(r"^ {0,3}(~~~+|```+)\s*[A-Za-z0-9_.+-]*\s*$")
 FENCE_CLOSE_RE = re.compile(r"^ {0,3}(~~~+|```+)\s*$")
@@ -204,6 +205,11 @@ def split_sections(lines: list[str], where: str, warnings: Warnings) -> tuple[li
                 current = {"number": int(section.group(1)), "heading": section.group(2), "lines": []}
                 sections.append(current)
                 continue
+            if not in_fence and BLANK_SECTION_RE.match(line):
+                # 番号の付け忘れ。前の節に混ぜると印を二重に数え、「空欄」でも引けなくなる
+                current = {"number": None, "heading": "空欄", "lines": []}
+                sections.append(current)
+                continue
             if not in_fence and H2_RE.match(line):
                 place = "前の節の本文" if current is not None else "前書き"
                 notes.append(f"番号のない節見出しは{place}として扱います: {line.strip()}")
@@ -284,6 +290,11 @@ def build_file_entries(path: Path, warnings: Warnings) -> list[dict]:
         warnings.add(where, f"title（{title}）とファイル名が違います")
 
     sections, preamble = split_sections(rest, where, warnings)
+    for section in sections:
+        if section["number"] is None:
+            used = [s["number"] for s in sections if s["number"] is not None]
+            section["number"] = max(used, default=-1) + 1
+            warnings.add(where, f"`## 空欄` に番号がないので、節 {section['number']} として入れました（本文にも番号を振ってください）")
     # 前書きから `# 題名` の行を除く。残りは捨てずに最初の節へ（設定欄が壊れた時は断片かもしれないので捨てる）
     preamble_text = [line for line in preamble if not H1_RE.match(line)]
     has_preamble = any(line.strip() for line in preamble_text)

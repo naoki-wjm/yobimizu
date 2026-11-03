@@ -388,7 +388,11 @@ form button {
 
   function snippet(text, key, reach) {
     const span = reach || 20;
-    const source = String(text).replace(/\s+/g, " ");
+    // 当たった一行だけを、箇条書きや強調の記号を落として見せる（結果の一覧は読む所なので）
+    const line = String(text).split("\n").find((l) => norm(l).includes(key));
+    const raw = line === undefined ? String(text) : line;
+    const cleaned = raw.replace(/^\s*(?:[-*+]|\d+\.)\s+/, "").replace(/^\d+(?:-[0-9a-z]+)+\.\s+/, "").replace(/\*\*|\[\[|\]\]/g, "");
+    const source = (norm(cleaned).includes(key) ? cleaned : raw).replace(/\s+/g, " ").trim();
     const at = norm(source).indexOf(key);
     if (at === -1) return source.slice(0, span * 2);
     const start = Math.max(0, at - span);

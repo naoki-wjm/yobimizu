@@ -195,6 +195,16 @@ class Tolerance(BuildCase):
         _, entries, _ = self.body_of(text)
         self.assertEqual([e["number"] for e in entries], [0, 1])
 
+    def test_unnumbered_blank_section_gets_next_number(self):
+        text = "---\ntitle: 題\n---\n\n## 0. 前提\n\n〔仮〕\n\n## 6. 六\n\n本文\n\n## 空欄\n\n- 節 6: 〔仮〕\n\n記録: [[甲]]\n"
+        entry, entries, warnings = self.body_of(text, number=7)
+        self.assertEqual([e["number"] for e in entries], [0, 6, 7])
+        self.assertEqual(entry["heading"], "空欄")
+        self.assertEqual(entry["kari"], 0)
+        self.assertEqual(entry["records"], ["甲"])
+        self.assertNotIn("聞けな", entries[1]["body"])
+        self.assertTrue(any("節 7" in w for w in warnings))
+
     def test_tilde_in_prose_is_not_a_fence(self):
         text = "---\ntitle: 題\n---\n\n## 0. 前提\n\n~~~だよ、と言った\n\n## 1. 一\n\n本文\n"
         _, entries, warnings = self.body_of(text)

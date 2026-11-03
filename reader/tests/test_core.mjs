@@ -255,6 +255,12 @@ test("重なる語の mark が壊れない", () => {
   assert.equal(out.replace(/<\/?mark>/g, ""), "abcd");
 });
 
+test("抜粋は当たった一行だけで、記号を落とす", () => {
+  assert.equal(Y.snippet("- 別の行\n- 3-6. **Docker** の手順\n- 次の行", "docker"), "Docker の手順");
+  assert.equal(Y.snippet("[[語の題]] を開く", "語"), "語の題 を開く");
+  assert.ok(Y.snippet("a**b", "a**b").includes("a**b")); // 語が記号を含むなら元のまま
+});
+
 test("抜粋は語を含み、長い本文を切る", () => {
   const out = Y.snippet("あ".repeat(100) + "語" + "い".repeat(100), "語");
   assert.ok(out.includes("語"));
