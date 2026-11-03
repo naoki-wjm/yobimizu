@@ -398,7 +398,8 @@ def build_index(shelf: Path, warnings: Warnings) -> dict:
         entries.extend(file_entries)
     if not entries:
         warnings.add("manuals", "マニュアルが一本もありません")
-    return {"built": dt.date.today().isoformat(), "entries": entries}
+    # 分まで持つ。同じ日に作り直しても、効いたかどうかが画面で分かるように
+    return {"built": dt.datetime.now().strftime("%Y-%m-%d %H:%M"), "entries": entries}
 
 
 def embeddable_json(index: dict) -> str:

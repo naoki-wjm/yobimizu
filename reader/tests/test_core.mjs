@@ -250,6 +250,32 @@ test("当たった語を本文で mark。大文字小文字を越えて、元の
   assert.ok(out.includes("<mark>Docker</mark>"));
 });
 
+test("文のまま引いても、本文にかたまりで印が付く", () => {
+  const marks = Y.markTerms(Y.splitTerms("AGENTS.md の雛形はどこにあるか"));
+  assert.deepEqual(marks.map((m) => m.key), ["agents.md", "の雛形はどこにあるか", "雛形"]);
+  const out = Y.renderBody("二枚の雛形があります", ctx(marks));
+  assert.ok(out.includes("<mark>雛形</mark>"));
+  // 一文字のかたまりと、ひらがなだけの語は足さない
+  assert.deepEqual(Y.markTerms(Y.splitTerms("鯨がいない")).map((m) => m.key), ["鯨がいない"]);
+  assert.deepEqual(Y.markTerms(Y.splitTerms("もふもふ")).map((m) => m.key), ["もふもふ"]);
+});
+
+test("何も出ない時だけ語尾を落として引き直す", () => {
+  const entries = [entry({ heading: "もふもふの話", body: "鯨がいる" })];
+  assert.equal(Y.effectiveQuery(entries, "もふもふとは"), "もふもふ");
+  assert.equal(Y.effectiveQuery(entries, "もふもふって何？"), "もふもふ");
+  assert.equal(Y.effectiveQuery(entries, "鯨について"), "鯨");
+  // 出るなら触らない
+  assert.equal(Y.effectiveQuery([entry({ body: "もふもふとは何か" })], "もふもふとは"), "もふもふとは");
+  // 落としても出なければ元のまま（「出なかった」を隠さない）
+  assert.equal(Y.effectiveQuery(entries, "ぽふぽふとは"), "ぽふぽふとは");
+  assert.equal(Y.effectiveQuery(entries, "クジラがいない"), "クジラがいない");
+  // 語尾そのものは消さない
+  assert.equal(Y.stripTail("とは"), "とは");
+  // 語ごとに落とす
+  assert.equal(Y.effectiveQuery(entries, "もふもふとは 鯨って"), "もふもふ 鯨");
+});
+
 test("重なる語の mark が壊れない", () => {
   const out = Y.highlight("abcd", Y.splitTerms("abc bcd"));
   assert.equal(out.replace(/<\/?mark>/g, ""), "abcd");

@@ -61,6 +61,8 @@ mark { background: var(--mark); color: inherit; border-radius: 2px; }
 .rim-inner, .pool { max-width: 84rem; margin: 0 auto; }
 .rim-top { display: flex; align-items: baseline; gap: 1rem; flex-wrap: wrap; }
 h1 { margin: 0; font: 600 clamp(2rem, 5vw, 3.1rem)/1.15 var(--mincho); letter-spacing: .08em; }
+h1 a { color: inherit; text-decoration: none; }
+h1 a:hover { text-decoration: underline; text-decoration-color: var(--line); text-decoration-thickness: 2px; }
 .rim-sub { color: var(--ink-soft); }
 .built { margin-left: auto; color: var(--ink-soft); font-size: .85rem; }
 form { position: relative; display: flex; gap: .5rem; max-width: 46rem; margin: 1rem 0 -1.45rem; }
@@ -98,14 +100,19 @@ form button {
 .chip[aria-pressed="true"] { background: var(--line); border-color: var(--line); color: var(--sheet); }
 
 #status { margin: 0 0 .9rem; color: var(--ink-soft); font-size: .92rem; }
+.relaxed { margin: 0 0 .3rem; font-size: .92rem; }
 
 /* 結果の一件。箱に詰めず、水に浮かぶ行として並べる */
-.hit { padding: .7rem 0 .8rem .9rem; border-left: 3px solid transparent; }
+/* 行のどこを押しても開く。題名のリンクを行いっぱいに広げ、ぶら下がる節のリンクだけ上に出す */
+.hit { position: relative; padding: .7rem 0 .8rem .9rem; border-left: 3px solid transparent; }
+.hit:hover { border-left-color: var(--line); background: var(--mark); }
 .hit + .hit { margin-top: .15rem; }
 .hit[aria-current="true"] { border-left-color: var(--line); background: var(--mark); }
 .hit-title { margin: 0; font: 600 1.06rem/1.5 var(--mincho); }
 .hit-title a { color: var(--ink); text-decoration: none; display: block; }
-.hit-title a:hover { text-decoration: underline; text-decoration-color: var(--line); }
+.hit-title a::after { content: ""; position: absolute; inset: 0; }
+.hit-name { color: var(--line); text-decoration: underline; text-underline-offset: .18em; }
+.hit .children, .hit .more { position: relative; z-index: 1; }
 .hit-file { color: var(--ink-soft); font-weight: 400; font-size: .92em; }
 .same-file .hit-file { opacity: .62; }
 .door { display: inline-block; margin-right: .4rem; padding: 0 .4rem; border: 1px solid var(--line); color: var(--line); font: 600 .75rem/1.5 var(--gothic); border-radius: 2px; vertical-align: .1em; }
@@ -115,6 +122,8 @@ form button {
 .tag-blank { color: var(--blank); }
 .where { margin: .15rem 0 0; font-size: .86rem; }
 .absent { margin: .1rem 0 0; color: var(--ink-soft); font-size: .8rem; }
+/* 別名を足す手掛かりになる語なので、小さくても見つけやすく */
+.absent-term { color: var(--blank); text-decoration: underline; text-decoration-thickness: 2px; text-underline-offset: .2em; }
 .children { list-style: none; margin: .4rem 0 0; padding: 0 0 0 .8rem; border-left: 1px solid var(--line); font-size: .88rem; }
 .children li { padding: .2rem 0; }
 .children .where { display: block; margin: 0; color: var(--ink-soft); font-size: .8rem; }
@@ -195,7 +204,7 @@ form button {
 <header class="rim">
   <div class="rim-inner">
     <div class="rim-top">
-      <h1>呼び水</h1>
+      <h1><a href="" id="home" title="検索を消して、読み込み直す">呼び水</a></h1>
       <span class="rim-sub">置き場の検索</span>
       <span class="built" id="built"></span>
     </div>
@@ -247,6 +256,21 @@ form button {
       terms.push({ raw, key });
     }
     return terms;
+  }
+
+  /* 開いた本文に印を付ける語。文のまま引いても本文に印が付くよう、語をひらがなで割った
+     かたまり（二文字以上）も足す。「雛形はどこにあるか」→「雛形」。読む時の軽い処理だけで済む */
+  function markTerms(terms) {
+    const seen = new Set(terms.map((t) => t.key));
+    const marks = terms.slice();
+    for (const term of terms) {
+      for (const piece of term.key.split(/[ぁ-ゟ、。？?！!]+/)) {
+        if (piece.length < 2 || seen.has(piece)) continue;
+        seen.add(piece);
+        marks.push({ raw: piece, key: piece });
+      }
+    }
+    return marks;
   }
 
   function firstHit(list, key) {
@@ -339,6 +363,26 @@ form button {
     main.sort(byRank);
     body.sort(byRank);
     return { terms, main, body, total: results.length };
+  }
+
+  /* 何も出ない時だけ、語尾を落として引き直す（「もふもふとは」→「もふもふ」）。
+     落とすのは決まった語尾だけで、近い物を探しに行くわけではない。引き直したことは画面に出す */
+  const TAILS = ["とはなに", "とは何", "ってなに", "って何", "はなに", "は何", "について", "に関して", "とは", "って"];
+
+  function stripTail(term) {
+    const bare = term.replace(/[?？!！。、]+$/, "");
+    for (const tail of TAILS) {
+      if (bare.length > tail.length && bare.endsWith(tail)) return bare.slice(0, -tail.length);
+    }
+    return bare;
+  }
+
+  // 実際に引く語を返す。引き直しても出なければ元のまま（「出なかった」をそのまま見せる）
+  function effectiveQuery(entries, query) {
+    if (search(entries, query).total) return query;
+    const relaxed = splitTerms(query).map((t) => stripTail(t.raw)).join(" ");
+    if (relaxed && relaxed !== splitTerms(query).map((t) => t.raw).join(" ") && search(entries, relaxed).total) return relaxed;
+    return query;
   }
 
   /* ---- 反応の一行（format.md 7 節の形） ---- */
@@ -692,7 +736,7 @@ form button {
     return out;
   }
 
-  const api = { collapseFilters, norm, splitTerms, search, today, reactionLine, noHitLine, esc, highlight, snippet, hashFor, buildLookup, renderBody, renderInline, WEIGHT, BODY_LIMIT, CHILD_LIMIT };
+  const api = { collapseFilters, markTerms, stripTail, effectiveQuery, norm, splitTerms, search, today, reactionLine, noHitLine, esc, highlight, snippet, hashFor, buildLookup, renderBody, renderInline, WEIGHT, BODY_LIMIT, CHILD_LIMIT };
   if (typeof globalThis !== "undefined") globalThis.YOBIMIZU = api;
   if (typeof document === "undefined") return;
 
@@ -713,7 +757,7 @@ form button {
     [examples[i], examples[j]] = [examples[j], examples[i]];
   }
 
-  $("built").textContent = "索引を作った日 " + data.built;
+  $("built").textContent = "索引を作った時刻 " + data.built;
 
   function readState() {
     const p = new URLSearchParams(location.hash.slice(1));
@@ -745,15 +789,28 @@ form button {
   };
 
   const HIT_LABEL = {
-    targeted: (h, entry) => `想定質問「${highlight(h.text, [h])}」（節 ${esc(entry.number)}）で当たり`,
-    question: (h) => `想定質問「${highlight(h.text, [h])}」で当たり（入口）`,
+    targeted: (h, entry) => `想定質問「${highlight(h.text, h.marks)}」（節 ${esc(entry.number)}）で当たり`,
+    question: (h) => `想定質問「${highlight(h.text, h.marks)}」で当たり（入口）`,
     title: () => "題名で当たり（入口）",
-    alias: (h) => `別名「${highlight(h.text, [h])}」で当たり（入口）`,
+    alias: (h) => `別名「${highlight(h.text, h.marks)}」で当たり（入口）`,
     summary: (h) => `要約「${highlight(snippet(h.text, h.key), [h])}」で当たり（入口）`,
     heading: () => "見出しで当たり",
     body: (h) => `本文「${highlight(snippet(h.text, h.key), [h])}」で当たり`,
   };
-  const whereHtml = (card) => card.hits.map((h) => HIT_LABEL[h.kind](h, card.entry)).join("<br>");
+  // 二つの語が同じ質問や別名に当たったら、一行にまとめて両方に印を付ける
+  const whereHtml = (card) => {
+    const rows = [];
+    const same = new Map();
+    for (const h of card.hits) {
+      const name = h.kind + "\u0000" + h.text;
+      const mergeable = ["targeted", "question", "alias", "title", "heading"].includes(h.kind);
+      if (mergeable && same.has(name)) { same.get(name).marks.push(h); continue; }
+      const row = Object.assign({}, h, { marks: [h] });
+      rows.push(row);
+      if (mergeable) same.set(name, row);
+    }
+    return rows.map((h) => HIT_LABEL[h.kind](h, card.entry)).join("<br>");
+  };
 
   function tagsHtml(entry) {
     const tags = [];
@@ -774,11 +831,11 @@ form button {
     const e = card.entry;
     const door = card.type === "door" ? '<span class="door">入口</span>' : "";
     let out = `<section class="hit${sameFile ? " same-file" : ""}"${isCurrent(state, e) ? ' aria-current="true"' : ""}>`;
-    out += `<h3 class="hit-title"><a href="${esc(openHash(state, e))}">${door}<span class="hit-file">${esc(e.title)} ›</span> ${esc(e.number)}. ${esc(e.heading)}</a></h3>`;
+    out += `<h3 class="hit-title"><a href="${esc(openHash(state, e))}">${door}<span class="hit-file">${esc(e.title)} ›</span> <span class="hit-name">${esc(e.number)}. ${esc(e.heading)}</span></a></h3>`;
     if (e.summary) out += `<p class="hit-summary">${esc(e.summary)}</p>`;
     out += tagsHtml(e);
     out += `<p class="where">${whereHtml(card)}</p>`;
-    if (card.absent.length) out += `<p class="absent">${card.absent.map((t) => `『${esc(t)}』`).join("")}は含まれていません</p>`;
+    if (card.absent.length) out += `<p class="absent">${card.absent.map((t) => `<span class="absent-term">『${esc(t)}』</span>`).join("")}は含まれていません</p>`;
     if (card.children && card.children.length) {
       const item = (c) => `<li${isCurrent(state, c.entry) ? ' aria-current="true"' : ""}><a href="${esc(openHash(state, c.entry))}">› ${esc(c.entry.number)}. ${esc(c.entry.heading)}</a><span class="where">${whereHtml(c)}</span></li>`;
       const shown = card.children.slice(0, CHILD_LIMIT);
@@ -836,7 +893,8 @@ form button {
       box.innerHTML = head + landingHtml(state);
       return;
     }
-    const found = search(entries, state.q, { reader: state.r, series: state.s });
+    const used = effectiveQuery(entries, state.q);
+    const found = search(entries, used, { reader: state.r, series: state.s });
     if (!found.total) {
       $("live").textContent = "出ませんでした";
       box.innerHTML = head + noHitHtml(state);
@@ -845,7 +903,8 @@ form button {
     const shownBody = found.body.slice(0, BODY_LIMIT);
     const moreBody = found.body.slice(BODY_LIMIT);
     $("live").textContent = `${found.total} 件`;
-    let html = head + `<p id="status">${found.total} 件</p>` + cardsHtml(found.main, state);
+    const note = used === state.q ? "" : `<p class="relaxed">『${esc(state.q.trim())}』では出ないので、『${esc(used)}』で引きました。</p>`;
+    let html = head + note + `<p id="status">${found.total} 件</p>` + cardsHtml(found.main, state);
     if (found.body.length) {
       html += `<h2 class="band">本文の中にだけある物</h2>` + cardsHtml(shownBody, state);
       // 開いた件が隠れないよう、中に開いた件があれば畳まない
@@ -870,7 +929,7 @@ form button {
       return;
     }
     document.title = `${entry.title} › ${entry.number}. ${entry.heading}`;
-    const terms = splitTerms(state.q);
+    const terms = markTerms(splitTerms(effectiveQuery(entries, state.q)));
     const ctx = { terms, lookup, title: entry.title, state: { q: state.q, r: state.r, s: state.s } };
     const siblings = entries.filter((e) => e.title === entry.title);
     const toc = siblings.map((e) => `<li><a href="${esc(openHash(state, e))}"${e === entry ? ' aria-current="true"' : ""}>${esc(e.number)}. ${esc(e.heading)}</a></li>`).join("");
@@ -996,6 +1055,13 @@ form button {
     ripple.classList.add("go");
     const next = hashFor(queryState(input.value));
     if (location.hash === next) render(); else location.hash = next;
+  });
+
+  // 題字: 検索を消して読み込み直す。作り直した reader.html の索引もここで読まれる
+  $("home").href = location.href.split("#")[0];
+  $("home").addEventListener("click", (event) => {
+    event.preventDefault();
+    if (location.hash) location.assign($("home").href); else location.reload();
   });
 
   document.addEventListener("click", async (event) => {

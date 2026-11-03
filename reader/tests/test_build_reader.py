@@ -356,6 +356,11 @@ class Output(unittest.TestCase):
         self.assertNotIn("秘密の場所", html)
         self.assertIn("題名A", html)
 
+    def test_built_has_minutes(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            index = br.build_index(write_shelf(Path(tmp), {"題名A.md": GOOD}), br.Warnings())
+        self.assertRegex(index["built"], r"^\d{4}-\d{2}-\d{2} \d{2}:\d{2}$")
+
     def test_no_external_requests_in_template(self):
         html = (READER / br.TEMPLATE_NAME).read_text(encoding="utf-8")
         for needle in ('src="http', 'href="http', "@import", "url(", "fetch("):
