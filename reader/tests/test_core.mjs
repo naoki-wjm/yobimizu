@@ -276,6 +276,27 @@ test("何も出ない時だけ語尾を落として引き直す", () => {
   assert.equal(Y.effectiveQuery(entries, "もふもふとは 鯨って"), "もふもふ 鯨");
 });
 
+test("目次: まとまり → 題名。入らない物は最後に", () => {
+  const entries = [
+    door({ title: "乙の手順", series: ["束"], readers: ["人"] }),
+    entry({ title: "乙の手順", number: 1, series: ["束"], readers: ["人"] }),
+    door({ title: "甲の手順", series: ["束", "別の束"], readers: ["機"] }),
+    door({ title: "束", series: ["束"], readers: ["人"] }),
+    door({ title: "ばらの手順", readers: ["人"] }),
+  ];
+  const groups = Y.tocGroups(entries);
+  assert.deepEqual(groups.map((g) => g.name), ["束", "別の束", ""]);
+  // まとまりと同じ名前のマニュアルは見出しに、子には入れない
+  assert.equal(groups[0].lead.title, "束");
+  assert.equal(groups[0].doors.length, 2);
+  // 二つのまとまりに入る本は両方に
+  assert.deepEqual(groups[1].doors.map((d) => d.title), ["甲の手順"]);
+  assert.deepEqual(groups[2].doors.map((d) => d.title), ["ばらの手順"]);
+  // 節は目次の組には入らない。絞り込みも効く
+  assert.deepEqual(Y.tocGroups(entries, { reader: "機" }).map((g) => g.name), ["束", "別の束"]);
+  assert.deepEqual(Y.tocGroups([]), []);
+});
+
 test("重なる語の mark が壊れない", () => {
   const out = Y.highlight("abcd", Y.splitTerms("abc bcd"));
   assert.equal(out.replace(/<\/?mark>/g, ""), "abcd");

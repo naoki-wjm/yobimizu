@@ -21,6 +21,7 @@
   --blank: #a03a28;       /* 〔空欄〕 */
   --mark: rgba(30, 106, 114, .2);
   --hairline: rgba(18, 48, 47, .2);
+  --gutter: clamp(1rem, 4vw, 3rem);
   --mincho: "Yu Mincho", "YuMincho", "Hiragino Mincho ProN", "Noto Serif CJK JP", serif;
   --gothic: "Yu Gothic UI", "Yu Gothic", "YuGothic", "Hiragino Sans", "Noto Sans CJK JP", Meiryo, sans-serif;
 }
@@ -40,7 +41,8 @@
   }
 }
 * { box-sizing: border-box; }
-html { -webkit-text-size-adjust: 100%; background: var(--water-deep); }
+/* スクロールバーの有無で画面が横にずれないよう、常に場所を取る */
+html { -webkit-text-size-adjust: 100%; background: var(--water-deep); overflow-y: scroll; }
 body {
   margin: 0;
   min-height: 100vh;
@@ -57,8 +59,8 @@ mark { background: var(--mark); color: inherit; border-radius: 2px; }
 .visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 
 /* 水面より上。検索窓は水面の線にまたがる */
-.rim { background: var(--ground); border-bottom: 2px solid var(--line); padding: 1.25rem clamp(1rem, 4vw, 3rem) 0; }
-.rim-inner, .pool { max-width: 84rem; margin: 0 auto; }
+.rim { background: var(--ground); border-bottom: 2px solid var(--line); padding: 1.25rem var(--gutter) 0; }
+.rim-inner { max-width: 84rem; margin: 0 auto; }
 .rim-top { display: flex; align-items: baseline; gap: 1rem; flex-wrap: wrap; }
 h1 { margin: 0; font: 600 clamp(2rem, 5vw, 3.1rem)/1.15 var(--mincho); letter-spacing: .08em; }
 h1 a { color: inherit; text-decoration: none; }
@@ -83,8 +85,9 @@ form button {
 @media (prefers-reduced-motion: reduce) { .ripple.go { animation: none; } .step-flash { animation: none !important; } }
 
 /* 水面より下 */
-.pool { padding: 2.3rem clamp(1rem, 4vw, 3rem) 4rem; display: grid; grid-template-columns: minmax(0, 46rem); gap: 2rem; align-items: start; }
-.has-open .pool { grid-template-columns: minmax(20rem, 29rem) minmax(0, 1fr); }
+/* 広い画面では一覧と紙面の二列を固定する。節を開いても閉じても、どちらの列も動かない */
+.pool { max-width: calc(84rem + 2 * var(--gutter)); margin: 0 auto; padding: 2.3rem var(--gutter) 4rem; display: grid; grid-template-columns: minmax(0, 1fr); gap: 2rem; align-items: start; }
+@media (min-width: 901px) { .pool { grid-template-columns: minmax(20rem, 29rem) minmax(0, 1fr); } }
 .filters { display: grid; gap: .3rem; margin-bottom: 1.1rem; font-size: .88rem; }
 .filter-box { margin-bottom: 1.1rem; font-size: .88rem; }
 .filter-box summary { cursor: pointer; color: var(--line); padding: .1rem 0; }
@@ -140,7 +143,34 @@ form button {
 
 /* 開いた一節: 水に浮かべた紙一枚 */
 #reader { background: var(--sheet); padding: 1.6rem clamp(1.1rem, 3vw, 2.4rem) 1.8rem; border-radius: 2px; box-shadow: 0 0 0 1px var(--hairline), .35rem .45rem 0 var(--water-deep); }
-@media (min-width: 901px) { #reader { position: sticky; top: 1rem; max-height: calc(100vh - 2rem); overflow: auto; } }
+/* 紙の大きさは中身によらず一定。上の縁の分だけ引いて、ページを動かさず全部見える */
+@media (min-width: 901px) {
+  #reader { position: sticky; top: 1rem; height: max(24rem, calc(100vh - 11.5rem)); overflow: auto; scrollbar-gutter: stable; }
+  .narrow-only { display: none; }
+}
+@media (max-width: 900px) { .wide-only { display: none; } }
+.paper-empty { margin: 0; color: var(--ink-soft); font-size: .92rem; }
+/* 目次 */
+.toc-heading { margin: 1.1rem 0 .2rem; font: 600 clamp(1.3rem, 2.4vw, 1.65rem)/1.45 var(--mincho); }
+.toc-series { margin: 1.4rem 0 .3rem; padding-bottom: .2rem; border-bottom: 1px solid var(--hairline); font: 600 1.08rem/1.5 var(--mincho); }
+.shelf-toc ul { list-style: none; margin: 0; padding: 0; }
+/* 一本を一行に。たくさん並んでもスクロールが伸びないように */
+.toc-item { position: relative; display: flex; flex-wrap: wrap; align-items: baseline; gap: 0 .8rem; padding: .22rem 0; }
+.toc-title { font: 600 1rem/1.5 var(--mincho); }
+.toc-date { color: var(--ink-soft); font-size: .8rem; white-space: nowrap; }
+.toc-sections summary { cursor: pointer; color: var(--line); font-size: .8rem; white-space: nowrap; }
+.toc-sections[open] { flex-basis: 100%; }
+.toc-sections ul { margin: .2rem 0 .3rem; padding-left: .9rem; border-left: 1px solid var(--hairline); font-size: .88rem; line-height: 1.8; }
+/* 指で触る端末にはホバーがないので、説明は行の下に出す */
+.toc-tip { order: 5; flex-basis: 100%; color: var(--ink-soft); font-size: .82rem; line-height: 1.55; }
+/* ホバーできる端末では重ねて出す。行を押し広げると一覧が動いて目が疲れる */
+@media (hover: hover) {
+  .toc-tip {
+    position: absolute; left: 0; top: 100%; z-index: 2; max-width: min(36rem, 100%); padding: .4rem .7rem;
+    background: var(--ink); color: var(--sheet); border-radius: 2px; pointer-events: none; opacity: 0;
+  }
+  .toc-title:hover ~ .toc-tip, .toc-title:focus-visible ~ .toc-tip { opacity: 1; }
+}
 .close-row { display: flex; justify-content: space-between; gap: 1rem; font-size: .85rem; margin-bottom: .6rem; }
 .doc-title { margin: 0; color: var(--ink-soft); font: 400 .95rem/1.5 var(--mincho); }
 .doc-heading { margin: .1rem 0 .9rem; font: 600 clamp(1.3rem, 2.4vw, 1.65rem)/1.45 var(--mincho); }
@@ -194,8 +224,8 @@ form button {
 .react-note { margin: .3rem 0 0; font-size: .84rem; color: var(--ink-soft); }
 
 @media (max-width: 900px) {
-  .has-open .pool { grid-template-columns: minmax(0, 1fr); }
   .has-open #results { display: none; }
+  body:not(.has-open):not(.at-landing) #reader { display: none; } /* 検索の結果を見ている間は一覧だけ。最初の画面では案内の下に目次 */
   .built { margin-left: 0; }
 }
 </style>
@@ -218,7 +248,7 @@ form button {
 <div class="visually-hidden" id="live" role="status"></div>
 <div class="pool" id="pool">
   <main id="results"></main>
-  <article id="reader" hidden tabindex="-1"></article>
+  <article id="reader" tabindex="-1"></article>
 </div>
 <noscript><p style="padding:2rem">この検索窓は JavaScript で動きます。ブラウザの設定で有効にしてください。</p></noscript>
 
@@ -363,6 +393,28 @@ form button {
     main.sort(byRank);
     body.sort(byRank);
     return { terms, main, body, total: results.length };
+  }
+
+  /* 目次の組み立て。まとまり → 題名。二つのまとまりに入る本は両方に出す。
+     まとまりと同じ名前のマニュアルは、そのまとまりの案内として見出しに置く（format.md 5 節）。
+     どのまとまりにも入らない物は name が空の組として最後に。 */
+  function tocGroups(entries, filters) {
+    const doors = entries.filter((e) => e.entrance && passes(e, filters || {}));
+    const byName = new Map();
+    const loose = [];
+    for (const door of doors) {
+      if (!door.series.length) { loose.push(door); continue; }
+      for (const name of door.series) {
+        if (!byName.has(name)) byName.set(name, { name, lead: null, doors: [] });
+        const group = byName.get(name);
+        if (door.title === name) group.lead = door; else group.doors.push(door);
+      }
+    }
+    const byTitle = (a, b) => a.title.localeCompare(b.title, "ja");
+    const groups = [...byName.values()].sort((a, b) => a.name.localeCompare(b.name, "ja"));
+    for (const group of groups) group.doors.sort(byTitle);
+    if (loose.length) groups.push({ name: "", lead: null, doors: loose.sort(byTitle) });
+    return groups;
   }
 
   /* 何も出ない時だけ、語尾を落として引き直す（「もふもふとは」→「もふもふ」）。
@@ -736,7 +788,7 @@ form button {
     return out;
   }
 
-  const api = { collapseFilters, markTerms, stripTail, effectiveQuery, norm, splitTerms, search, today, reactionLine, noHitLine, esc, highlight, snippet, hashFor, buildLookup, renderBody, renderInline, WEIGHT, BODY_LIMIT, CHILD_LIMIT };
+  const api = { tocGroups, collapseFilters, markTerms, stripTail, effectiveQuery, norm, splitTerms, search, today, reactionLine, noHitLine, esc, highlight, snippet, hashFor, buildLookup, renderBody, renderInline, WEIGHT, BODY_LIMIT, CHILD_LIMIT };
   if (typeof globalThis !== "undefined") globalThis.YOBIMIZU = api;
   if (typeof document === "undefined") return;
 
@@ -863,15 +915,11 @@ form button {
     const shown = entries.filter((e) => passes(e, { reader: state.r, series: state.s }));
     const sum = (key) => shown.reduce((n, e) => n + e[key], 0);
     const titles = [...new Set(shown.map((e) => e.title))];
-    const list = titles.map((t) => {
-      const e = lookup.entrance(t);
-      return `<li><a class="shelf-title" href="${esc(openHash(state, e))}">${esc(t)}</a><span class="shelf-meta">${esc(e.summary)}</span><span class="shelf-meta">更新 ${esc(e.updated)}</span></li>`;
-    }).join("");
     const eg = examples.slice(0, 3).map((q) => `<li><a href="${esc(hashFor({ q, r: state.r, s: state.s }))}">${esc(q)}</a></li>`).join("");
     const narrowed = state.r || state.s;
     return `<div class="landing"><p class="shelf-stat">${narrowed ? "絞り込むと" : "この置き場には"}、題名 ${titles.length} 本、節 ${shown.length}、〔仮〕${sum("kari")}、〔空欄〕${sum("kuuran")}。</p>`
-      + (eg && !narrowed ?`<h2>こう聞けます</h2><ul>${eg}</ul>` : "")
-      + `<h2>題名から開く</h2><ul>${list}</ul></div>`;
+      + (eg && !narrowed ? `<h2>こう聞けます</h2><ul>${eg}</ul>` : "")
+      + "</div>";
   }
 
   function noHitHtml(state) {
@@ -914,13 +962,39 @@ form button {
     box.innerHTML = html;
   }
 
+  function tocHtml(state) {
+    const groups = tocGroups(entries, { reader: state.r, series: state.s });
+    if (!groups.length) return "";
+    const named = groups.some((g) => g.name);
+    const door = (e) => {
+      const sections = entries.filter((s) => s.title === e.title);
+      const list = sections.map((s) => `<li><a href="${esc(openHash(state, s))}">${esc(s.number)}. ${esc(s.heading)}</a></li>`).join("");
+      return `<li class="toc-item"><a class="toc-title" href="${esc(openHash(state, e))}">${esc(e.title)}</a>`
+        + (e.summary ? `<span class="toc-tip">${esc(e.summary)}</span>` : "")
+        + (e.updated ? `<span class="toc-date">更新 ${esc(e.updated)}</span>` : "")
+        + (sections.length > 1 ? `<details class="toc-sections"><summary>節 ${sections.length}</summary><ul>${list}</ul></details>` : "")
+        + "</li>";
+    };
+    return `<h2 class="toc-heading">目次</h2><div class="shelf-toc">` + groups.map((g) => {
+      const label = !named ? "" : g.name ? g.name : "どのまとまりにも入っていない物";
+      const head = g.lead
+        ? `<h3 class="toc-series"><a href="${esc(openHash(state, g.lead))}">${esc(label)}</a></h3>`
+        : label ? `<h3 class="toc-series">${esc(label)}</h3>` : "";
+      return `<section>${head}<ul>${g.doors.map(door).join("")}</ul></section>`;
+    }).join("") + "</div>";
+  }
+
   function renderReader(state) {
     const box = $("reader");
     const open = state.t !== "" && state.n !== null;
     document.body.classList.toggle("has-open", open);
-    box.hidden = !open;
+    document.body.classList.toggle("at-landing", !open && !splitTerms(state.q).length);
     document.title = "呼び水 置き場の検索";
-    if (!open) { box.innerHTML = ""; return; }
+    if (!open) {
+      box.scrollTop = 0;
+      box.innerHTML = '<p class="paper-empty">マニュアル本体はここに出ます。検索の結果か、この目次から選んでください。</p>' + tocHtml(state);
+      return;
+    }
 
     const closeHash = hashFor({ q: state.q, r: state.r, s: state.s });
     const entry = lookup.section(state.t, state.n);
@@ -950,7 +1024,7 @@ form button {
     const dates = [entry.created && `作成 ${esc(entry.created)}`, entry.updated && `更新 ${esc(entry.updated)}`].filter(Boolean).join(" ／ ");
     if (dates) meta.push(["日付", dates]);
 
-    box.innerHTML = `<div class="close-row"><a href="${esc(closeHash)}">一覧へ戻る</a></div>`
+    box.innerHTML = `<div class="close-row"><a href="${esc(closeHash)}"><span class="wide-only">目次へ</span><span class="narrow-only">一覧へ戻る</span></a></div>`
       + `<p class="doc-title">${esc(entry.title)}</p>`
       + `<h2 class="doc-heading" id="doc-heading" tabindex="-1">${esc(entry.number)}. ${esc(entry.heading)}</h2>`
       + (siblings.length > 1 ? `<details class="toc"><summary>この題名の節を見る</summary><ol>${toc}</ol></details>` : "")
@@ -1065,7 +1139,7 @@ form button {
   });
 
   document.addEventListener("click", async (event) => {
-    if (event.target.closest("#results a")) listScroll = window.scrollY;
+    if (event.target.closest("#results a, .shelf-toc a")) listScroll = window.scrollY;
     const chip = event.target.closest(".chip");
     if (chip) {
       refocusChip = { key: chip.dataset.key, value: chip.dataset.value };
