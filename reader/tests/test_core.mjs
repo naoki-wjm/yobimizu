@@ -18,6 +18,19 @@ function entry(over) {
 }
 const door = (over) => entry(Object.assign({ number: 0, heading: "前提", entrance: true }, over));
 
+test("開いた直後の例: 別名の短い語だけ、一本から一つずつ順に、無ければ出さない", () => {
+  const a = door({ title: "甲", aliases: ["鯨", "九文字ちょうどです", "十文字ちょうどですよ", "Docker が起動しない"] });
+  const b = door({ title: "乙", aliases: ["毛繕い"] });
+  const c = door({ title: "丙", aliases: [] });
+  const section = entry({ title: "甲", aliases: ["節の別名"] });
+  const words = Y.exampleWords([a, b, c, section], 2);
+  assert.equal(words.length, 2);
+  assert.ok(words.includes("毛繕い"), "一本目から二つ取る前に、次の本へ回る");
+  assert.ok(words.every((w) => ["鯨", "九文字ちょうどです", "毛繕い"].includes(w)), words.join("／"));
+  assert.deepEqual(Y.exampleWords([a, b, c], 3).sort(), ["九文字ちょうどです", "毛繕い", "鯨"].sort());
+  assert.deepEqual(Y.exampleWords([c], 3), []);
+});
+
 test("全角英数と大文字を揃える。かなは揃えない", () => {
   assert.equal(Y.norm("ＤｏｃＫＥＲ１"), "docker1");
   assert.equal(Y.norm("カナ").includes("かな"), false);

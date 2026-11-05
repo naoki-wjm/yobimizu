@@ -135,8 +135,8 @@ form button {
 
 /* 一番上の案内 */
 .landing h2 { font: 600 1.1rem var(--mincho); margin: 1.6rem 0 .4rem; }
-.landing ul { list-style: none; margin: 0; padding: 0; }
-.landing li { padding: .3rem 0; }
+.landing ul { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; row-gap: .3rem; }
+.landing li + li::before { content: "／"; margin: 0 .35em; color: var(--ink-soft); }
 .shelf-stat { margin: 0; }
 .search-hint { margin: .5rem 0; color: var(--ink-soft); font-size: .86rem; line-height: 1.65; }
 .shelf-title { font: 600 1.02rem/1.5 var(--mincho); }
@@ -789,7 +789,34 @@ form button {
     return out;
   }
 
-  const api = { tocGroups, collapseFilters, markTerms, stripTail, effectiveQuery, norm, splitTerms, search, today, reactionLine, noHitLine, esc, highlight, snippet, hashFor, buildLookup, renderBody, renderInline, WEIGHT, BODY_LIMIT, CHILD_LIMIT };
+  /* 開いた直後の「こう引けます」。単語で引く案内の隣に置くので、例も単語にする。
+     材料は別名の短い物（空白なし・9 字まで）。入口だけが別名を持つので、例は必ず当たる。
+     同じ本に寄らないよう、一本から一つずつ順に拾う。短い別名が無ければ出さない */
+  const EXAMPLE_MAX_LENGTH = 9;
+
+  function exampleWords(entries, count, random) {
+    const rand = random || Math.random;
+    const shuffled = (list) => {
+      const out = list.slice();
+      for (let i = out.length - 1; i > 0; i--) {
+        const j = Math.floor(rand() * (i + 1));
+        [out[i], out[j]] = [out[j], out[i]];
+      }
+      return out;
+    };
+    const isWord = (alias) => !/\s/.test(alias) && [...alias].length <= EXAMPLE_MAX_LENGTH;
+    const perTitle = shuffled(entries.filter((e) => e.entrance)).map((e) => shuffled((e.aliases || []).filter(isWord)));
+    const longest = Math.max(0, ...perTitle.map((list) => list.length));
+    const picked = new Set();
+    for (let round = 0; round < longest; round++) {
+      for (const list of perTitle) {
+        if (picked.size < count && round < list.length) picked.add(list[round]);
+      }
+    }
+    return [...picked];
+  }
+
+  const api = { exampleWords, tocGroups, collapseFilters, markTerms, stripTail, effectiveQuery, norm, splitTerms, search, today, reactionLine, noHitLine, esc, highlight, snippet, hashFor, buildLookup, renderBody, renderInline, WEIGHT, BODY_LIMIT, CHILD_LIMIT };
   if (typeof globalThis !== "undefined") globalThis.YOBIMIZU = api;
   if (typeof document === "undefined") return;
 
@@ -803,12 +830,7 @@ form button {
 
   const readerValues = [...new Set(entries.flatMap((e) => e.readers))];
   const seriesValues = [...new Set(entries.flatMap((e) => e.series))];
-  const allQuestions = [...new Set(entries.flatMap((e) => [...e.questions, ...e.targeted_questions]))];
-  const examples = allQuestions.slice();
-  for (let i = examples.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [examples[i], examples[j]] = [examples[j], examples[i]];
-  }
+  const examples = exampleWords(entries, 3);
 
   $("built").textContent = "索引を作った時刻 " + data.built;
 
@@ -919,11 +941,11 @@ form button {
     const shown = entries.filter((e) => passes(e, { reader: state.r, series: state.s }));
     const sum = (key) => shown.reduce((n, e) => n + e[key], 0);
     const titles = [...new Set(shown.map((e) => e.title))];
-    const eg = examples.slice(0, 3).map((q) => `<li><a href="${esc(hashFor({ q, r: state.r, s: state.s }))}">${esc(q)}</a></li>`).join("");
+    const eg = examples.map((q) => `<li><a href="${esc(hashFor({ q, r: state.r, s: state.s }))}">${esc(q)}</a></li>`).join("");
     const narrowed = state.r || state.s;
     return `<div class="landing"><p class="shelf-stat">${narrowed ? "絞り込むと" : "この置き場には"}、題名 ${titles.length} 本、節 ${shown.length}、〔仮〕${sum("kari")}、〔空欄〕${sum("kuuran")}。</p>`
       + `<p class="search-hint">${SEARCH_HINT}</p>`
-      + (eg && !narrowed ? `<h2>こう聞けます</h2><ul>${eg}</ul>` : "")
+      + (eg && !narrowed ? `<h2>こう引けます</h2><ul>${eg}</ul>` : "")
       + "</div>";
   }
 
