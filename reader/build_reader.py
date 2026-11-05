@@ -2,7 +2,7 @@
 """呼び水 — 置き場のマニュアルから、検索用の一枚 HTML を作る。
 
 使い方:
-    python build_reader.py <置き場のパス>               → <置き場>/reader.html
+    python build_reader.py <置き場のパス>               → <置き場>/reader.html（reactions.md が無ければ、見出しだけの物も）
     python build_reader.py <置き場のパス> --json        → 索引の JSON を標準出力へ（HTML は作らない）
     python build_reader.py <置き場のパス> --out 出力先  → 出力先へ
 
@@ -419,6 +419,24 @@ def render_html(index: dict) -> str:
     return template.replace(PLACEHOLDER, embeddable_json(index))
 
 
+REACTIONS_NAME = "reactions.md"
+REACTIONS_HEADER = """# 反応の記録
+
+検索窓で引いた答えへの一言を、1 行ずつ末尾に追記する。
+
+- 日付 | 検索語 | 題名 | 節 | 反応（役に立った／部分的／見当違い／人に渡した） | 一言
+"""
+
+
+def ensure_reactions(shelf: Path) -> bool:
+    """貼り先が無いと初めての人が止まるので、無い時だけ作る。あれば決して触らない。"""
+    path = shelf / REACTIONS_NAME
+    if path.exists():
+        return False
+    path.write_text(REACTIONS_HEADER, encoding="utf-8", newline="\n")
+    return True
+
+
 def main(argv: list[str] | None = None) -> int:
     for stream in (sys.stdout, sys.stderr):
         if hasattr(stream, "reconfigure"):
@@ -448,6 +466,8 @@ def main(argv: list[str] | None = None) -> int:
     out.write_text(render_html(index), encoding="utf-8", newline="\n")
     titles = len({e["title"] for e in index["entries"]})
     print(f"{out.name} を作りました（題名 {titles} 本・節 {len(index['entries'])}）")
+    if not args.out and ensure_reactions(args.shelf):
+        print(f"{REACTIONS_NAME} も作りました（検索窓で作った一行を、ここの末尾に貼ります）")
     return 0
 
 

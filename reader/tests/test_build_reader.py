@@ -366,6 +366,25 @@ class Output(unittest.TestCase):
         for needle in ('src="http', 'href="http', "@import", "url(", "fetch("):
             self.assertNotIn(needle, html)
 
+    def test_reactions_made_only_when_missing(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            shelf = write_shelf(Path(tmp), {"題名A.md": GOOD})
+            reactions = shelf / br.REACTIONS_NAME
+            self.assertFalse(reactions.exists())
+            self.assertEqual(br.main([str(shelf)]), 0)
+            self.assertIn("反応の記録", reactions.read_text(encoding="utf-8"))
+            reactions.write_text("- 2026-01-05 | 検索語 | 題名A | 節 1 | 部分的 | 消さないで\n", encoding="utf-8")
+            self.assertEqual(br.main([str(shelf)]), 0)
+            self.assertIn("消さないで", reactions.read_text(encoding="utf-8"))
+
+    def test_reactions_not_made_for_other_output(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            shelf = write_shelf(Path(tmp), {"題名A.md": GOOD})
+            self.assertEqual(br.main([str(shelf), "--out", str(Path(tmp) / "elsewhere.html")]), 0)
+            self.assertFalse((shelf / br.REACTIONS_NAME).exists())
+            self.assertEqual(br.main([str(shelf), "--json"]), 0)
+            self.assertFalse((shelf / br.REACTIONS_NAME).exists())
+
     def test_missing_manuals_exits_2(self):
         with tempfile.TemporaryDirectory() as tmp:
             self.assertEqual(br.main([tmp]), 2)
