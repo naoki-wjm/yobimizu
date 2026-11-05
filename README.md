@@ -8,6 +8,7 @@
 
 - **書く側**: 聞き取りの台本。どの LLM に貼っても動く 1 枚の文章（`yobimizu-kumiage/script.md`、第三稿）と、それを包むだけの Claude 向けスキル（同じフォルダの `SKILL.md`。フォルダごとスキル置き場にコピーすれば入る）
 - **置き場の型**: できたマニュアルを置くフォルダと、ファイル冒頭の設定欄・本文・記録の決まり（`shelf/format.md`）。見本は `shelf/example/`（本文三本と、その元になった聞き取りの記録。実際の聞き取りから固有の名前を言い換えた合成版）
+- **直す側**: 反応を手掛かりに、話し手に聞きながら本文を直す台本（`yobimizu-kaitei/script.md`、第一稿）と、それを包むだけのスキル（同じフォルダの `SKILL.md`）
 - **読む側**: 置き場から引く検索窓（サーバー不要の 1 枚 HTML）。作るコードは `reader/build_reader.py`（Python の標準ライブラリだけ）と雛形の `reader/template.html`。設計図は `reader/spec.md`、画面の絵は `reader/sketch.md`
 
 ## 使い方
@@ -16,6 +17,7 @@
 2. **まとめる**: 記録と `shelf/format.md` を LLM に渡して、マニュアル本文を書いてもらう。聞き取りをした LLM と同じでなくてよい
 3. **置く**: 本文を `manuals/`、記録を `records/<題名>/` に置く。形は `shelf/example/` と同じ
 4. **引く**: 置き場を指して `python reader/build_reader.py <置き場のパス>` を実行し、できた `<置き場>/reader.html` をブラウザで開いて検索する。サーバーもネットも要らない。本文を直したら作り直す。検索窓に LLM はいないので、打った言葉がそのまま書かれている所を探す。文のままより単語で引く方が当たる
+5. **直す**: 引いた答えへの反応を `reactions.md` に貼って溜める。溜まったら `yobimizu-kaitei/script.md` と本文と `reactions.md` を LLM に渡して（Claude Code ならフォルダごとスキルとして入れ）、聞かれた問いに答えながら直す。直したら 4 の作り直しへ
 
 先に出来上がりを見たい人は `python reader/build_reader.py shelf/example` で見本の検索窓を作って開くか、`shelf/example/manuals/` の三本へ。読み手が LLM の手順、読み手が本人の手順、心得寄りの物、の三種類です。
 
