@@ -206,6 +206,11 @@ form button {
 .source { color: var(--ink-soft); font-size: .92em; }
 .missing { color: var(--ink-soft); }
 
+.sec-nav { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: .6rem; margin: 1.4rem 0 0; }
+.sec-nav a { display: block; padding: .55rem .8rem; border: 1px solid var(--line); border-radius: 3px; color: var(--ink); text-decoration: none; }
+.sec-nav a:hover { background: var(--mark); }
+.sec-nav-next { grid-column: 2; text-align: right; }
+.sec-nav-label { display: block; color: var(--line); font-size: .8rem; }
 .doc-meta { margin: 1.4rem 0 0; padding-top: .8rem; border-top: 1px solid var(--hairline); font-size: .86rem; display: grid; gap: .2rem; grid-template-columns: max-content minmax(0, 1fr); column-gap: .9rem; }
 .doc-meta dt { color: var(--ink-soft); }
 .doc-meta dd { margin: 0; }
@@ -816,7 +821,16 @@ form button {
     return [...picked];
   }
 
-  const api = { exampleWords, tocGroups, collapseFilters, markTerms, stripTail, effectiveQuery, norm, splitTerms, search, today, reactionLine, noHitLine, esc, highlight, snippet, hashFor, buildLookup, renderBody, renderInline, WEIGHT, BODY_LIMIT, CHILD_LIMIT };
+  /* 手順を通して読む人のための、前後の節。並びは本文の順（索引の順）。
+     同じ題名が二本ある時は開ける方（番号の先の一件）だけを数える */
+  function sectionNeighbors(siblings, entry) {
+    const seen = new Set();
+    const list = siblings.filter((e) => !seen.has(e.number) && seen.add(e.number));
+    const at = list.findIndex((e) => e.number === entry.number);
+    return { prev: at > 0 ? list[at - 1] : null, next: at >= 0 && at < list.length - 1 ? list[at + 1] : null };
+  }
+
+  const api = { sectionNeighbors, exampleWords, tocGroups, collapseFilters, markTerms, stripTail, effectiveQuery, norm, splitTerms, search, today, reactionLine, noHitLine, esc, highlight, snippet, hashFor, buildLookup, renderBody, renderInline, WEIGHT, BODY_LIMIT, CHILD_LIMIT };
   if (typeof globalThis !== "undefined") globalThis.YOBIMIZU = api;
   if (typeof document === "undefined") return;
 
@@ -1035,6 +1049,12 @@ form button {
     const siblings = entries.filter((e) => e.title === entry.title);
     const toc = siblings.map((e) => `<li><a href="${esc(openHash(state, e))}"${e === entry ? ' aria-current="true"' : ""}>${esc(e.number)}. ${esc(e.heading)}</a></li>`).join("");
 
+    const near = sectionNeighbors(siblings, entry);
+    const navLink = (e, label, cls) => `<a class="${cls}" rel="${cls === "sec-nav-next" ? "next" : "prev"}" href="${esc(openHash(state, e))}"><span class="sec-nav-label">${label}</span>${esc(e.number)}. ${esc(e.heading)}</a>`;
+    const secNav = near.prev || near.next
+      ? `<nav class="sec-nav" aria-label="前後の節">${near.prev ? navLink(near.prev, "← 前の節へ", "sec-nav-prev") : ""}${near.next ? navLink(near.next, "次の節へ →", "sec-nav-next") : ""}</nav>`
+      : "";
+
     const meta = [];
     const titleLink = (name) => {
       const t = lookup.resolve(name);
@@ -1056,6 +1076,7 @@ form button {
       + `<h2 class="doc-heading" id="doc-heading" tabindex="-1">${esc(entry.number)}. ${esc(entry.heading)}</h2>`
       + (siblings.length > 1 ? `<details class="toc"><summary>この題名の節を見る</summary><ol>${toc}</ol></details>` : "")
       + `<div class="doc">${renderBody(entry.body, ctx)}</div>`
+      + secNav
       + (meta.length ? `<dl class="doc-meta">${meta.map(([k, v]) => `<dt>${esc(k)}</dt><dd>${v}</dd>`).join("")}</dl>` : "")
       + `<div class="react"><p class="react-q">この答えは:</p><div class="react-buttons">`
       + ["役に立った", "部分的", "見当違い", "人に渡した"].map((r) => `<button type="button" data-react="${r}" aria-pressed="false">${r}</button>`).join("")

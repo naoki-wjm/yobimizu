@@ -213,6 +213,25 @@ const s4 = await send("Page.captureScreenshot", { format: "png" }); writeFileSyn
 await send("Emulation.clearDeviceMetricsOverride");
 await ev(`location.hash='#q='+encodeURIComponent('鯨')`); await sleep(200);
 
+// 前後の節
+const openSec = (n) => `location.hash='#q='+encodeURIComponent('鯨')+'&t='+encodeURIComponent('Windowsが再起動された後にやるべきルーチン')+'&n=${n}'`;
+await ev(openSec(4)); await sleep(300);
+check("前後の節: 真ん中は両方", await ev(`!!document.querySelector('.sec-nav-prev') && !!document.querySelector('.sec-nav-next')`));
+await ev(`document.querySelector('.sec-nav').scrollIntoView({ block: 'center' })`); await sleep(100);
+const navShot = await send("Page.captureScreenshot", { format: "png" }); writeFileSync(join(sp, "shots", "sec-nav.png"), Buffer.from(navShot.result.data, "base64"));
+await ev(`document.querySelector('.sec-nav-next').click()`); await sleep(300);
+check("前後の節: 次へで次の節が開く", (await ev(`document.getElementById('doc-heading').textContent`)).startsWith("5."));
+check("前後の節: 開き直すと紙の先頭へ", (await ev(`document.getElementById('reader').scrollTop`)) === 0);
+check("前後の節: 検索語を持ったまま", (await ev(`location.hash`)).includes(encodeURIComponent("鯨")));
+await ev(`document.querySelector('.sec-nav-prev').click()`); await sleep(300);
+check("前後の節: 前へで戻る", (await ev(`document.getElementById('doc-heading').textContent`)).startsWith("4."));
+await ev(openSec(0)); await sleep(300);
+check("前後の節: 最初は前がない", await ev(`!document.querySelector('.sec-nav-prev') && !!document.querySelector('.sec-nav-next')`));
+await ev(`document.querySelector('details.toc')?.setAttribute('open','')`);
+const lastSec = await ev(`[...document.querySelectorAll('details.toc a')].pop().getAttribute('href')`);
+await ev(`location.hash=${JSON.stringify(lastSec)}`); await sleep(300);
+check("前後の節: 最後は次がない", await ev(`!!document.querySelector('.sec-nav-prev') && !document.querySelector('.sec-nav-next')`));
+
 // 単語で引く案内
 await ev(`location.hash=''`); await sleep(200);
 check("入力欄の案内", (await ev(`document.getElementById('q').placeholder`)).includes("単語で引く"));

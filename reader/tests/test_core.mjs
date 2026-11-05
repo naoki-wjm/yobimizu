@@ -18,6 +18,18 @@ function entry(over) {
 }
 const door = (over) => entry(Object.assign({ number: 0, heading: "前提", entrance: true }, over));
 
+test("前後の節: 端では片方だけ、同じ番号は先の一件、一節だけなら無し", () => {
+  const s = [0, 1, 2].map((number) => entry({ number }));
+  assert.equal(Y.sectionNeighbors(s, s[0]).prev, null);
+  assert.equal(Y.sectionNeighbors(s, s[0]).next, s[1]);
+  assert.equal(Y.sectionNeighbors(s, s[1]).prev, s[0]);
+  assert.equal(Y.sectionNeighbors(s, s[1]).next, s[2]);
+  assert.equal(Y.sectionNeighbors(s, s[2]).next, null);
+  const twice = [...s, entry({ number: 1 }), entry({ number: 3 })];
+  assert.equal(Y.sectionNeighbors(twice, s[2]).next.number, 3);
+  assert.deepEqual(Y.sectionNeighbors([s[0]], s[0]), { prev: null, next: null });
+});
+
 test("開いた直後の例: 別名の短い語だけ、一本から一つずつ順に、無ければ出さない", () => {
   const a = door({ title: "甲", aliases: ["鯨", "九文字ちょうどです", "十文字ちょうどですよ", "Docker が起動しない"] });
   const b = door({ title: "乙", aliases: ["毛繕い"] });
