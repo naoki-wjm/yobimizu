@@ -152,7 +152,7 @@ await ev(`document.querySelector('#results .hit-title a').click()`); await sleep
 check("開いた本文に印", await ev(`document.querySelector('.doc mark') !== null`));
 await ev(`document.querySelector('[data-react="部分的"]').click()`); await sleep(250);
 check("反応の一行は打った言葉", (await ev(`document.getElementById('line').value`)).includes("| もふもふとは |"));
-await ev(`location.hash='#q='+encodeURIComponent('クジラがいない')`); await sleep(300);
+await ev(`location.hash='#q='+encodeURIComponent('ペンギンがいない')`); await sleep(300);
 check("落としても出なければ出ない", (await ev(`document.getElementById('results').textContent`)).includes("出ませんでした"));
 
 // 同じ質問は一行に、外れた語に下線
