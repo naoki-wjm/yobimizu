@@ -206,11 +206,10 @@ form button {
 .source { color: var(--ink-soft); font-size: .92em; }
 .missing { color: var(--ink-soft); }
 
-.sec-nav { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: .6rem; margin: 1.4rem 0 0; }
-.sec-nav a { display: block; padding: .55rem .8rem; border: 1px solid var(--line); border-radius: 3px; color: var(--ink); text-decoration: none; }
+.sec-nav { display: flex; gap: .6rem; margin: 1.2rem 0 0; font-size: .86rem; }
+.sec-nav a { padding: .25rem .7rem; border: 1px solid var(--line); border-radius: 3px; text-decoration: none; }
 .sec-nav a:hover { background: var(--mark); }
-.sec-nav-next { grid-column: 2; text-align: right; }
-.sec-nav-label { display: block; color: var(--line); font-size: .8rem; }
+.sec-nav-next { margin-left: auto; }
 .doc-meta { margin: 1.4rem 0 0; padding-top: .8rem; border-top: 1px solid var(--hairline); font-size: .86rem; display: grid; gap: .2rem; grid-template-columns: max-content minmax(0, 1fr); column-gap: .9rem; }
 .doc-meta dt { color: var(--ink-soft); }
 .doc-meta dd { margin: 0; }
@@ -1050,7 +1049,7 @@ form button {
     const toc = siblings.map((e) => `<li><a href="${esc(openHash(state, e))}"${e === entry ? ' aria-current="true"' : ""}>${esc(e.number)}. ${esc(e.heading)}</a></li>`).join("");
 
     const near = sectionNeighbors(siblings, entry);
-    const navLink = (e, label, cls) => `<a class="${cls}" rel="${cls === "sec-nav-next" ? "next" : "prev"}" href="${esc(openHash(state, e))}"><span class="sec-nav-label">${label}</span>${esc(e.number)}. ${esc(e.heading)}</a>`;
+    const navLink = (e, label, cls) => `<a class="${cls}" rel="${cls === "sec-nav-next" ? "next" : "prev"}" href="${esc(openHash(state, e))}">${label}</a>`;
     const secNav = near.prev || near.next
       ? `<nav class="sec-nav" aria-label="前後の節">${near.prev ? navLink(near.prev, "← 前の節へ", "sec-nav-prev") : ""}${near.next ? navLink(near.next, "次の節へ →", "sec-nav-next") : ""}</nav>`
       : "";
