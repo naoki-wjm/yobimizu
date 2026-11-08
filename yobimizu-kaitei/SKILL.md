@@ -4,7 +4,7 @@ description: 呼び水の検索窓に返ってきた反応（reactions.md）を�
 license: MIT
 metadata:
   project: yobimizu
-  script-version: "第二稿 2026-11-05"
+  script-version: "第三稿 2026-11-08"
 ---
 
 # 呼び水 — 改訂スキル

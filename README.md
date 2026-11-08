@@ -8,7 +8,7 @@
 
 - **書く側**: 聞き取りの台本。どの LLM に貼っても動く 1 枚の文章（`yobimizu-kumiage/script.md`、第三稿）と、それを包むだけの Claude 向けスキル（同じフォルダの `SKILL.md`。フォルダごとスキル置き場にコピーすれば入る）
 - **置き場の型**: できたマニュアルを置くフォルダと、ファイル冒頭の設定欄・本文・記録の決まり（`shelf/format.md`）。見本は `shelf/example/`（本文三本と、その元になった聞き取りの記録。実際の聞き取りから固有の名前を言い換えた合成版）
-- **直す側**: 反応を手掛かりに、話し手に聞きながら本文を直す台本（`yobimizu-kaitei/script.md`、第二稿）と、それを包むだけのスキル（同じフォルダの `SKILL.md`）
+- **直す側**: 反応を手掛かりに、話し手に聞きながら本文を直す台本（`yobimizu-kaitei/script.md`、第三稿）と、それを包むだけのスキル（同じフォルダの `SKILL.md`）
 - **読む側**: 置き場から引く検索窓（サーバー不要の 1 枚 HTML）。作るコードは `reader/build_reader.py`（Python の標準ライブラリだけ）と雛形の `reader/template.html`。設計図は `reader/spec.md`、画面の絵は `reader/sketch.md`
 
 ## 使い方
