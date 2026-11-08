@@ -48,12 +48,20 @@
 
 ## 状態
 
-作っている途中。書く側と置き場の型は文章として一通り揃い、読む側は検索・開く・反応の一行まで動く。Build mainly with Claude Code: 茶々入れ2026
+**ひと段落しました（2026-11-08）。** 書く側・置き場の型・読む側・直す側の四つがそろい、聞き取る → まとめる → 置く → 引く → 直す の輪が、作者の手で一周しました。並走（Build mainly with Claude Code: 茶々入れ2026）は、ここで一旦ゴールです。
+
+残っていること:
+
+- 見本の四本目（このツール自体の使い方）の空欄。Python の入れ方、スキルの登録の手順など
+- 本体を新しい版に入れ替える手順の聞き取り（実際に入れ替えた時に）
+- 作者以外の人が、この README から入って一周すること
+- LLM で文のまま引く口（MCP）は、今回は作りません。MCP 自体の更新が落ち着いてから考えます
 
 作っている途中の経過（なぜその問いを立てたか・何に引っ掛かったか・なぜ方針を変えたか）は、リポジトリの外の雑記に残しています。
 
 - [初見さん向けの案内（連載の目次と拾い読み）](https://garasudama.yumegatari.com/%E9%9B%91%E9%8C%B2/%E5%BF%9C%E5%8B%9F%E3%81%97%E3%81%A6%E3%81%84%E3%81%BE%E3%81%9B%E3%82%93/Anthropic%E3%83%8F%E3%83%83%E3%82%AB%E3%82%BD%E3%83%B3%E8%8C%B6%E3%80%85%E5%85%A5%E3%82%8C2026%EF%BC%88%E5%BF%9C%E5%8B%9F%E3%81%97%E3%81%A6%E3%81%84%E3%81%BE%E3%81%9B%E3%82%93%EF%BC%89.html)
 - [連載の一覧（新しい順）](https://garasudama.yumegatari.com/%E3%82%BF%E3%82%B0/BmwC%E8%8C%B6%E3%80%85%E5%85%A5%E3%82%8C2026.html)
+- [ひとまずのゴール 2026-10](https://garasudama.yumegatari.com/%E9%9B%91%E8%A8%98/2026%E5%B9%B411%E6%9C%88/2026-11-08-01%EF%BC%88Build%20mainly%20with%20Claude%20Code%EF%BC%9A%20%E8%8C%B6%E3%80%85%E5%85%A5%E3%82%8C%202026-10%EF%BC%89.html)・[締めの番外編 2026-10-after](https://garasudama.yumegatari.com/%E9%9B%91%E8%A8%98/2026%E5%B9%B411%E6%9C%88/2026-11-08-02%EF%BC%88Build%20mainly%20with%20Claude%20Code%EF%BC%9A%20%E8%8C%B6%E3%80%85%E5%85%A5%E3%82%8C2026-10-after%E3%83%BB%E3%82%B3%E3%83%BC%E3%83%89%E3%81%95%E3%82%93%E7%95%AA%E5%A4%96%E7%B7%A8%EF%BC%89.html)
 - [初回から読むなら 2026-1](https://garasudama.yumegatari.com/%E9%9B%91%E8%A8%98/2026%E5%B9%B410%E6%9C%88/2026-10-15-01%EF%BC%88Build%20mainly%20with%20Claude%20Code%EF%BC%9A%20%E8%8C%B6%E3%80%85%E5%85%A5%E3%82%8C%202026-1%EF%BC%89.html)
 
 ## ライセンス
