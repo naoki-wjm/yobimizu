@@ -398,10 +398,10 @@ class Examples(unittest.TestCase):
         index = br.build_index(READER.parent / "shelf" / "example", warnings)
         entries = index["entries"]
         self.assertEqual(warnings.items, [])
-        self.assertEqual(len({e["title"] for e in entries}), 3)
-        self.assertEqual(len(entries), 34)
-        self.assertEqual(sum(e["kari"] for e in entries), 12)
-        self.assertEqual(sum(e["kuuran"] for e in entries), 10)
+        self.assertEqual(len({e["title"] for e in entries}), 4)
+        self.assertEqual(len(entries), 42)
+        self.assertEqual(sum(e["kari"] for e in entries), 17)
+        self.assertEqual(sum(e["kuuran"] for e in entries), 18)
 
 
 if __name__ == "__main__":

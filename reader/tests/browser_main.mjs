@@ -54,7 +54,7 @@ let pass = 0, fail = 0;
 const check = (name, ok, extra = "") => { ok ? pass++ : fail++; console.log(`${ok ? "OK  " : "NG  "} ${name} ${ok ? "" : extra}`); };
 
 await send("Page.navigate", { url }); await sleep(600);
-check("開いた直後に案内", await ev(`document.querySelector('.landing') !== null && document.querySelector('.shelf-stat').textContent.includes('節 34')`));
+check("開いた直後に案内", await ev(`document.querySelector('.landing') !== null && document.querySelector('.shelf-stat').textContent.includes('節 42')`));
 
 // 打つと引ける（ハッシュは replace）
 const before = await ev("history.length");
@@ -239,7 +239,7 @@ check("開いた直後に案内", (await ev(`document.querySelector('.landing .s
 const egWords = JSON.parse(await ev(`JSON.stringify([...document.querySelectorAll('.landing li a')].map(a=>a.textContent))`));
 check("例は単語が三つ", egWords.length === 3 && egWords.every((w) => [...w].length <= 9 && !/\s/.test(w)), egWords.join("／"));
 check("例は横一列", await ev(`(() => { const t = [...document.querySelectorAll('.landing li')].map(li => li.getBoundingClientRect().top); return t.length === 3 && new Set(t).size < 3; })()`));
-await ev(`location.hash='#q='+encodeURIComponent('オブシディアンを立ち上げるタイミング')`); await sleep(250);
+await ev(`location.hash='#q='+encodeURIComponent('冷蔵庫の霜取りの手順')`); await sleep(250);
 check("出なかった時に案内", (await ev(`document.querySelector('#results .search-hint')?.textContent`) || "").includes("単語で引いて"));
 await ev(`location.hash='#q='+encodeURIComponent('鯨')`); await sleep(200);
 
