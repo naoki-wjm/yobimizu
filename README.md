@@ -32,7 +32,7 @@
 4. **引く**: yobimizu のフォルダでターミナルを開き、置き場を指して `python reader/build_reader.py <置き場のパス>` を実行し、できた `<置き場>/reader.html` をブラウザで開いて検索する。サーバーもネットも要らない。本文を直したら作り直す。検索窓に LLM はいないので、打った言葉がそのまま書かれている所を探す。文のままより単語で引く方が当たる
 5. **直す**: 引いた答えへの反応を `reactions.md` に貼って溜める。溜まったら `yobimizu-kaitei/script.md` と本文と `reactions.md` を LLM に渡して（Claude Code ならフォルダごとスキルとして入れ）、聞かれた問いに答えながら直す。直したら 4 の作り直しへ
 
-先に出来上がりを見たい人は `python reader/build_reader.py shelf/example` で見本の検索窓を作って開くか、`shelf/example/manuals/` の四本へ。読み手が LLM の手順、読み手が本人の手順、心得寄りの物、それとこの道具自体の使い方（段ごとに読み手が替わる手順）です。
+先に出来上がりを見たい人は、**見本の検索窓を [naoki-wjm.github.io/yobimizu](https://naoki-wjm.github.io/yobimizu/) で触れます**（反応の一行は作れますが、貼り先の `reactions.md` は手元に置き場を作った時だけです）。手元で作るなら `python reader/build_reader.py shelf/example` で作って開くか、`shelf/example/manuals/` の四本へ。読み手が LLM の手順、読み手が本人の手順、心得寄りの物、それとこの道具自体の使い方（段ごとに読み手が替わる手順）です。
 
 ## 必要な環境
 

@@ -1,0 +1,50 @@
+# 見本の置き場（shelf/example）から検索窓を作って GitHub Pages に置く。
+# 見本か読む側を直して main に push すると作り直される。
+name: 見本の検索窓を公開
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "shelf/example/**"
+      - "reader/build_reader.py"
+      - "reader/template.html"
+      - ".github/workflows/pages.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: 検索窓を作る
+        run: |
+          python reader/build_reader.py shelf/example
+          mkdir -p _site
+          cp shelf/example/reader.html _site/index.html
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
